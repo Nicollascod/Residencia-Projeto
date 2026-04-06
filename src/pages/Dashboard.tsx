@@ -12,9 +12,25 @@ const Dashboard = () => {
           <p>Bem-vindo, <strong>{auth.user?.username}</strong>.</p>
           <p>Papéis: {auth.user?.roles.join(', ')}</p>
         </div>
-        <button onClick={auth.logout} style={{ padding: '10px 14px' }}>
-          Sair
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button onClick={auth.logout} style={{ padding: '10px 14px' }}>
+            Sair
+          </button>
+          {auth.user?.roles.includes('coordenador-geral') && (
+            <button
+              onClick={auth.resetUsers}
+              style={{
+                padding: '8px 12px',
+                fontSize: '0.9em',
+                backgroundColor: '#ffc107',
+                border: 'none',
+                borderRadius: 4
+              }}
+            >
+              Resetar Usuários
+            </button>
+          )}
+        </div>
       </div>
 
       <nav style={{ marginTop: 24, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -23,7 +39,17 @@ const Dashboard = () => {
         </Link>
         {auth.user?.roles.includes('coordenador-geral') && (
           <Link to="/manage-users" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
-            Criar usuários
+            Gerenciar Usuários
+          </Link>
+        )}
+        {(auth.user?.roles.includes('coordenador') || auth.user?.roles.includes('professor')) && (
+          <Link to="/courses" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
+            Meus Cursos
+          </Link>
+        )}
+        {auth.user?.roles.includes('professor') && (
+          <Link to="/students" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
+            Alunos
           </Link>
         )}
       </nav>
@@ -32,7 +58,26 @@ const Dashboard = () => {
         <h2>Conteúdo protegido</h2>
         <p>Esta página está disponível apenas para usuários autenticados.</p>
         {auth.user?.roles.includes('coordenador-geral') && (
-          <p>Você é Coordenador Geral e pode gerenciar usuários.</p>
+          <div style={{ backgroundColor: '#f8f9fa', padding: 16, borderRadius: 4, marginTop: 16 }}>
+            <h3>Privilégios de Coordenador Geral</h3>
+            <p>Você pode gerenciar todos os usuários do sistema, incluindo criação, edição e controle de acesso.</p>
+            <p><strong>Usuários ativos:</strong> {auth.users.filter(u => u.active).length}</p>
+            <p><strong>Total de usuários:</strong> {auth.users.length}</p>
+          </div>
+        )}
+        {(auth.user?.roles.includes('coordenador') || auth.user?.roles.includes('professor')) && (
+          <div style={{ backgroundColor: '#f8f9fa', padding: 16, borderRadius: 4, marginTop: 16 }}>
+            <h3>Seus Cursos</h3>
+            {auth.user?.courses && auth.user.courses.length > 0 ? (
+              <ul>
+                {auth.user.courses.map(course => (
+                  <li key={course}>{course}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>Nenhum curso associado.</p>
+            )}
+          </div>
         )}
       </section>
     </main>

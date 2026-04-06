@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 
 const Login = () => {
@@ -52,6 +52,32 @@ const Login = () => {
         <button type="submit" style={{ padding: '12px 16px' }}>
           Fazer login
         </button>
+        <div style={{ marginTop: 12, textAlign: 'center' }}>
+          <Link to="/recover-password" style={{ color: '#007bff', textDecoration: 'none' }}>
+            Esqueceu a senha?
+          </Link>
+        </div>
+        {error && error.includes('desativada') && (
+          <div style={{ marginTop: 12, textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={() => {
+                auth.resetUsers()
+                setError('')
+                alert('Usuários resetados! Tente fazer login novamente.')
+              }}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#ffc107',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer'
+              }}
+            >
+              🔄 Resetar Todas as Contas
+            </button>
+          </div>
+        )}
       </form>
       <section style={{ marginTop: 28 }}>
         <strong>Contas de teste:</strong>

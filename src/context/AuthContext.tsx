@@ -14,21 +14,29 @@ const defaultUsers: StoredUser[] = [
     username: 'coordenador-geral',
     password: 'geral123',
     roles: ['coordenador-geral'],
+    active: true,
+    courses: [],
   },
   {
     username: 'coordenador',
     password: 'coord123',
     roles: ['coordenador'],
+    active: true,
+    courses: ['Matemática', 'Física'],
   },
   {
     username: 'professor',
     password: 'prof123',
     roles: ['professor'],
+    active: true,
+    courses: ['Português', 'História'],
   },
   {
     username: 'multi',
     password: 'multi123',
     roles: ['coordenador', 'professor'],
+    active: true,
+    courses: ['Química', 'Biologia'],
   },
 ]
 
@@ -83,9 +91,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return Promise.reject(new Error('Usuário ou senha inválidos'))
     }
 
+    if (!matched.active) {
+      return Promise.reject(new Error('Conta desativada'))
+    }
+
     const loggedUser: User = {
       username: matched.username,
       roles: matched.roles,
+      active: matched.active,
+      courses: matched.courses,
     }
 
     setUser(loggedUser)
@@ -95,7 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null)
   }
 
-  const createUser = async (username: string, password: string, roles: Role[]) => {
+  const createUser = async (username: string, password: string, roles: Role[], courses: string[] = []) => {
     const existingUser = storedUsers.find(
       (item) => item.username.toLowerCase() === username.toLowerCase(),
     )
@@ -112,9 +126,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       username: username.trim(),
       password: password.trim(),
       roles,
+      active: true,
+      courses,
     }
 
     setStoredUsers((prev) => [...prev, newUser])
+  }
+
+  const updateUser = async (username: string, updates: Partial<Pick<User, 'roles' | 'active' | 'courses'>>) => {
+    const userIndex = storedUsers.findIndex(
+      (item) => item.username.toLowerCase() === username.toLowerCase(),
+    )
+
+    if (userIndex === -1) {
+      return Promise.reject(new Error('Usuário não encontrado'))
+    }
+
+    setStoredUsers((prev) => {
+      const updated = [...prev]
+      updated[userIndex] = { ...updated[userIndex], ...updates }
+      return updated
+    })
+
+    // Update current user if it's the one being updated
+    if (user?.username.toLowerCase() === username.toLowerCase()) {
+      setUser((prev) => prev ? { ...prev, ...updates } : null)
+    }
+  }
+
+  const resetUsers = () => {
+    setStoredUsers(defaultUsers)
+    setUser(null)
   }
 
   const contextValue: AuthContextType = {
@@ -122,10 +164,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     users: storedUsers.map((item) => ({
       username: item.username,
       roles: item.roles,
+      active: item.active,
+      courses: item.courses,
     })),
     login,
     logout,
     createUser,
+    updateUser,
+    resetUsers,
   }
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
