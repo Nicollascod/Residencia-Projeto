@@ -154,6 +154,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
+  const deleteUser = async (username: string) => {
+    const userIndex = storedUsers.findIndex(
+      (item) => item.username.toLowerCase() === username.toLowerCase(),
+    )
+
+    if (userIndex === -1) {
+      return Promise.reject(new Error('Usuário não encontrado'))
+    }
+
+    // Prevent deleting the last coordinator-geral
+    const remainingCoordenadoresGerais = storedUsers.filter(
+      (u, i) => i !== userIndex && u.roles.includes('coordenador-geral')
+    )
+    if (remainingCoordenadoresGerais.length === 0) {
+      return Promise.reject(new Error('Não é possível excluir o último Coordenador Geral'))
+    }
+
+    setStoredUsers((prev) => prev.filter((_, i) => i !== userIndex))
+
+    // Logout if deleting current user
+    if (user?.username.toLowerCase() === username.toLowerCase()) {
+      setUser(null)
+    }
+  }
+
   const resetUsers = () => {
     setStoredUsers(defaultUsers)
     setUser(null)
@@ -171,6 +196,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logout,
     createUser,
     updateUser,
+    deleteUser,
     resetUsers,
   }
 

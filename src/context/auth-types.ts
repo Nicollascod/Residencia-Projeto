@@ -14,5 +14,6 @@ export interface AuthContextType {
   logout: () => void
   createUser: (username: string, password: string, roles: Role[], courses?: string[]) => Promise<void>
   updateUser: (username: string, updates: Partial<Pick<User, 'roles' | 'active' | 'courses'>>) => Promise<void>
+  deleteUser: (username: string) => Promise<void>
   resetUsers: () => void
 }

@@ -97,6 +97,18 @@ const ManageUsers = () => {
     }
   }
 
+  const handleDelete = async (user: User) => {
+    if (!confirm(`Tem certeza que deseja excluir o usuário ${user.username}? Esta ação não pode ser desfeita.`)) {
+      return
+    }
+    try {
+      await auth.deleteUser(user.username)
+      setMessage(`Usuário ${user.username} excluído com sucesso.`)
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Erro ao excluir usuário')
+    }
+  }
+
   const filteredUsers = auth.users.filter(user => {
     const roleMatch = filterRole === 'todos' || user.roles.includes(filterRole)
     const activeMatch = filterActive === 'todos' ||
@@ -263,6 +275,19 @@ const ManageUsers = () => {
                       }}
                     >
                       {user.active ? 'Desativar' : 'Ativar'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(user)}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '0.9em',
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4
+                      }}
+                    >
+                      Excluir
                     </button>
                   </div>
                 </div>

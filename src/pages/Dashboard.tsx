@@ -43,9 +43,17 @@ const Dashboard = () => {
           </Link>
         )}
         {(auth.user?.roles.includes('coordenador') || auth.user?.roles.includes('professor')) && (
-          <Link to="/courses" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
-            Meus Cursos
-          </Link>
+          <>
+            <Link to="/courses" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
+              Cursos
+            </Link>
+            <Link to="/classes" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
+              Turmas
+            </Link>
+            <Link to="/subjects" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
+              Disciplinas
+            </Link>
+          </>
         )}
         {auth.user?.roles.includes('professor') && (
           <Link to="/students" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
