@@ -10,6 +10,12 @@ import Classes from './pages/Classes'
 import ClassForm from './pages/ClassForm'
 import Subjects from './pages/Subjects'
 import SubjectForm from './pages/SubjectForm'
+import Professors from './pages/Professors'
+import ProfessorForm from './pages/ProfessorForm'
+import Rooms from './pages/Rooms'
+import RoomForm from './pages/RoomForm'
+import Schedule from './pages/Schedule'
+import UnallocatedSubjects from './pages/UnallocatedSubjects'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -33,6 +39,16 @@ function App() {
         <Route path="/subjects/new" element={<SubjectForm />} />
         <Route path="/subjects/:id" element={<SubjectForm />} />
         <Route path="/subjects/:id/edit" element={<SubjectForm />} />
+        <Route path="/professors" element={<Professors />} />
+        <Route path="/professors/new" element={<ProfessorForm />} />
+        <Route path="/professors/:username" element={<ProfessorForm />} />
+        <Route path="/professors/:username/edit" element={<ProfessorForm />} />
+        <Route path="/rooms" element={<Rooms />} />
+        <Route path="/rooms/new" element={<RoomForm />} />
+        <Route path="/rooms/:id" element={<RoomForm />} />
+        <Route path="/rooms/:id/edit" element={<RoomForm />} />
+        <Route path="/schedule" element={<Schedule />} />
+        <Route path="/unallocated-subjects" element={<UnallocatedSubjects />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={["coordenador-geral"]} />}>
