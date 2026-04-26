@@ -55,11 +55,6 @@ const Dashboard = () => {
             </Link>
           </>
         )}
-        {auth.user?.roles.includes('professor') && (
-          <Link to="/students" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
-            Alunos
-          </Link>
-        )}
       </nav>
 
       <section style={{ marginTop: 32 }}>
