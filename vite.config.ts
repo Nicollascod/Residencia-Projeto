@@ -6,5 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     https: false,
+    watch: {
+      ignored: ['**/backend/venv/**'],
+    },
   },
 })
