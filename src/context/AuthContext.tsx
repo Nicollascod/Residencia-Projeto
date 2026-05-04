@@ -104,20 +104,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (username: string, password: string) => {
     // Tentar login com Django primeiro
     try {
-      const response = await api.post('/api/auth/token/', {
-        email: username,
+const response = await api.post('/auth/token/', {
+        username: username,
         password: password,
       })
-
+      
       const { access, refresh } = response.data
       setToken(access)
       
       // Buscar dados do usuário
-      const userResponse = await api.get('/api/gerenciar/', {
+      const userResponse = await api.get('/gerenciar/', {
         headers: { Authorization: `Bearer ${access}` }
       })
       
-      const djangoUser = userResponse.data.find((u: any) => u.email === username)
+      const djangoUser = userResponse.data.find((u: any) => u.username === username)
       if (djangoUser) {
         const loggedUser: User = {
           username: djangoUser.username,

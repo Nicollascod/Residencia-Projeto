@@ -2,38 +2,38 @@ import { useState, useEffect } from 'react'
 import api from '../services/api'
 
 interface Class {
-  id: string
-  name: string
+  id: number
+  nome: string
 }
 
 interface Subject {
-  id: string
-  name: string
-  professors: string[]
+  id: number
+  nome: string
+  professores: number[]
 }
 
 interface Room {
-  id: string
-  name: string
+  id: number
+  nome: string
 }
 
 interface User {
+  id: number
   username: string
-  name: string
-  roles: string[]
+  first_name: string
+  papel: string
 }
 
 interface ScheduledClass {
   id: string
-  classId: string
-  subjectId: string
-  professorUsername: string
-  roomId: string
-  dayOfWeek: number // 0-6 (Sunday-Saturday)
-  startTime: string // HH:MM
-  endTime: string // HH:MM
-  semester: string
-  year: number
+  disciplina: string
+  turma: string
+  professor: number // ID
+  sala: number // ID
+  dia_semana: string // 'SEG', 'TER', etc.
+  horario_inicio: string
+  horario_fim: string
+  periodo_letivo: string
 }
 
 interface ScheduleGridProps {
@@ -42,7 +42,8 @@ interface ScheduleGridProps {
   year: number
 }
 
-const daysOfWeek = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+const daysOfWeek = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']
+const dayLabels = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 const timeSlots = [
   '07:00-07:50', '08:00-08:50', '09:00-09:50', '10:00-10:50',
   '11:00-11:50', '12:00-12:50', '13:00-13:50', '14:00-14:50',
@@ -63,18 +64,18 @@ const ScheduleGrid = ({ viewType, semester, year }: ScheduleGridProps) => {
       try {
         setLoading(true)
         const [scheduledRes, classesRes, subjectsRes, roomsRes, professorsRes] = await Promise.all([
-          api.get('/scheduled-classes', { params: { semester, year } }),
-          api.get('/classes'),
-          api.get('/subjects'),
-          api.get('/rooms'),
-          api.get('/users')
+          api.get('/aulas'),
+          api.get('/turmas'),
+          api.get('/disciplinas'),
+          api.get('/salas'),
+          api.get('/gerenciar')
         ])
 
         setScheduledClasses(scheduledRes.data)
         setClasses(classesRes.data)
         setSubjects(subjectsRes.data)
         setRooms(roomsRes.data)
-        setProfessors(professorsRes.data.filter((user: User) => user.roles?.includes('professor')))
+        setProfessors(professorsRes.data.filter((user: User) => user.papel === 'professor'))
       } catch (error) {
         console.error('Error fetching schedule data:', error)
       } finally {
@@ -101,64 +102,54 @@ const ScheduleGrid = ({ viewType, semester, year }: ScheduleGridProps) => {
   const getItemName = (item: Class | User | Room) => {
     switch (viewType) {
       case 'class':
-        return (item as Class).name
+        return (item as Class).nome
       case 'professor':
-        return (item as User).name
+        return (item as User).first_name
       case 'room':
-        return (item as Room).name
+        return (item as Room).nome
       default:
         return ''
     }
   }
 
   const getItemId = (item: Class | User | Room) => {
-    switch (viewType) {
-      case 'class':
-        return (item as Class).id
-      case 'professor':
-        return (item as User).username
-      case 'room':
-        return (item as Room).id
-      default:
-        return ''
-    }
+    return item.id
   }
 
-  const getScheduledClassForCell = (itemId: string, dayIndex: number, timeSlot: string) => {
+  const getScheduledClassForCell = (itemId: number, dayIndex: number, timeSlot: string) => {
     const [startTime] = timeSlot.split('-')
     return scheduledClasses.find(sc => {
       let matchesItem = false
       switch (viewType) {
         case 'class':
-          matchesItem = sc.classId === itemId
+          matchesItem = sc.turma === getYAxisItems().find(c => c.id === itemId)?.nome
           break
         case 'professor':
-          matchesItem = sc.professorUsername === itemId
+          matchesItem = sc.professor === itemId
           break
         case 'room':
-          matchesItem = sc.roomId === itemId
+          matchesItem = sc.sala === itemId
           break
       }
 
       return matchesItem &&
-             sc.dayOfWeek === dayIndex &&
-             sc.startTime === startTime &&
-             sc.semester === semester &&
-             sc.year === year
+             sc.dia_semana === daysOfWeek[dayIndex] &&
+             sc.horario_inicio === startTime + ':00' &&
+             sc.periodo_letivo === semester
     })
   }
 
   const getScheduledClassInfo = (scheduledClass: ScheduledClass) => {
-    const subject = subjects.find(s => s.id === scheduledClass.subjectId)
-    const professor = professors.find(p => p.username === scheduledClass.professorUsername)
-    const room = rooms.find(r => r.id === scheduledClass.roomId)
-    const class_ = classes.find(c => c.id === scheduledClass.classId)
+    const subject = subjects.find(s => s.nome === scheduledClass.disciplina)
+    const professor = professors.find(p => p.id === scheduledClass.professor)
+    const room = rooms.find(r => r.id === scheduledClass.sala)
+    const class_ = classes.find(c => c.nome === scheduledClass.turma)
 
     return {
-      subjectName: subject?.name || 'N/A',
-      professorName: professor?.name || 'N/A',
-      roomName: room?.name || 'N/A',
-      className: class_?.name || 'N/A'
+      subjectName: subject?.nome || 'N/A',
+      professorName: professor?.first_name || 'N/A',
+      roomName: room?.nome || 'N/A',
+      className: class_?.nome || 'N/A'
     }
   }
 
@@ -176,7 +167,7 @@ const ScheduleGrid = ({ viewType, semester, year }: ScheduleGridProps) => {
             <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f5f5f5', minWidth: '200px' }}>
               {viewType === 'class' ? 'Turma' : viewType === 'professor' ? 'Professor' : 'Sala'}
             </th>
-            {daysOfWeek.map(day => (
+            {dayLabels.map(day => (
               <th key={day} colSpan={timeSlots.length} style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f5f5f5', textAlign: 'center' }}>
                 {day}
               </th>
@@ -184,7 +175,7 @@ const ScheduleGrid = ({ viewType, semester, year }: ScheduleGridProps) => {
           </tr>
           <tr>
             <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f5f5f5' }}></th>
-            {daysOfWeek.map(day =>
+            {dayLabels.map(day =>
               timeSlots.map(slot => (
                 <th key={`${day}-${slot}`} style={{ border: '1px solid #ddd', padding: '4px', backgroundColor: '#f9f9f9', fontSize: '12px', textAlign: 'center', writingMode: 'vertical-rl', textOrientation: 'mixed', minWidth: '60px' }}>
                   {slot}
@@ -199,7 +190,7 @@ const ScheduleGrid = ({ viewType, semester, year }: ScheduleGridProps) => {
               <td style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>
                 {getItemName(item)}
               </td>
-              {daysOfWeek.map((day, dayIndex) =>
+              {dayLabels.map((day, dayIndex) =>
                 timeSlots.map(slot => {
                   const scheduledClass = getScheduledClassForCell(getItemId(item), dayIndex, slot)
                   const info = scheduledClass ? getScheduledClassInfo(scheduledClass) : null

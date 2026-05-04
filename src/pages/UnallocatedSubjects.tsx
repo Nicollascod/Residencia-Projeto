@@ -2,27 +2,32 @@ import { useState, useEffect } from 'react'
 import api from '../services/api'
 
 interface Subject {
-  id: string
-  name: string
-  courseId: string
-  professors: string[]
+  id: number
+  nome: string
+  curso: number
+  professores: number[]
 }
 
 interface Course {
-  id: string
-  name: string
+  id: number
+  nome: string
 }
 
 interface ScheduledClass {
-  subjectId: string
-  semester: string
-  year: number
+  disciplina: string
+  periodo_letivo: string
+}
+
+interface User {
+  id: number
+  first_name: string
 }
 
 const UnallocatedSubjects = () => {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [courses, setCourses] = useState<Course[]>([])
   const [scheduledClasses, setScheduledClasses] = useState<ScheduledClass[]>([])
+  const [professors, setProfessors] = useState<User[]>([])
   const [semester, setSemester] = useState('2024.1')
   const [year, setYear] = useState(2024)
   const [loading, setLoading] = useState(true)
@@ -34,15 +39,17 @@ const UnallocatedSubjects = () => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [subjectsRes, coursesRes, scheduledRes] = await Promise.all([
-          api.get('/subjects'),
-          api.get('/courses'),
-          api.get('/scheduled-classes', { params: { semester, year } })
+        const [subjectsRes, coursesRes, scheduledRes, professorsRes] = await Promise.all([
+          api.get('/disciplinas'),
+          api.get('/cursos'),
+          api.get('/aulas'),
+          api.get('/gerenciar')
         ])
 
         setSubjects(subjectsRes.data)
         setCourses(coursesRes.data)
         setScheduledClasses(scheduledRes.data)
+        setProfessors(professorsRes.data.filter((user: User) => user.papel === 'professor'))
       } catch (error) {
         console.error('Error fetching data:', error)
       } finally {
@@ -54,13 +61,12 @@ const UnallocatedSubjects = () => {
   }, [semester, year])
 
   const getUnallocatedSubjects = () => {
-    const allocatedSubjectIds = new Set(scheduledClasses.map(sc => sc.subjectId))
-    return subjects.filter(subject => !allocatedSubjectIds.has(subject.id))
+    const allocatedSubjectNames = new Set(scheduledClasses.filter(sc => sc.periodo_letivo === semester).map(sc => sc.disciplina))
+    return subjects.filter(subject => !allocatedSubjectNames.has(subject.nome))
   }
 
-  const getCourseName = (courseId: string) => {
-    const course = courses.find(c => c.id === courseId)
-    return course?.name || 'N/A'
+  const getProfessorNames = (professorIds: number[]) => {
+    return professorIds.map(id => professors.find(p => p.id === id)?.first_name || 'N/A').join(', ')
   }
 
   const unallocatedSubjects = getUnallocatedSubjects()
@@ -137,12 +143,12 @@ const UnallocatedSubjects = () => {
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
               }}
             >
-              <h3 style={{ margin: '0 0 8px 0', color: '#856404' }}>{subject.name}</h3>
+              <h3 style={{ margin: '0 0 8px 0', color: '#856404' }}>{subject.nome}</h3>
               <p style={{ margin: '4px 0', color: '#856404' }}>
-                <strong>Curso:</strong> {getCourseName(subject.courseId)}
+                <strong>Curso:</strong> {getCourseName(subject.curso)}
               </p>
               <p style={{ margin: '4px 0', color: '#856404' }}>
-                <strong>Professores:</strong> {subject.professors.length > 0 ? subject.professors.join(', ') : 'Nenhum professor atribuído'}
+                <strong>Professores:</strong> {subject.professores.length > 0 ? getProfessorNames(subject.professores) : 'Nenhum professor atribuído'}
               </p>
               <div style={{
                 marginTop: 12,
