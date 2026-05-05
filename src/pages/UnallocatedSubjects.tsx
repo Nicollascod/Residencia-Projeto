@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react'
-import api from '../services/api'
+import { useNavigate } from 'react-router-dom'
+import mockApi from '../services/mockApi'
 
 interface Subject {
   id: number
-  nome: string
+  nome?: string
+  name?: string
   curso: number
-  professores: number[]
-}
-
-interface Course {
-  id: number
-  nome: string
+  professores?: (number | string)[]
+  professors?: (number | string)[]
 }
 
 interface ScheduledClass {
@@ -19,18 +17,21 @@ interface ScheduledClass {
 }
 
 interface User {
-  id: number
-  first_name: string
+  id?: number
+  username?: string
+  first_name?: string
+  papel?: string
+  ativo?: boolean
 }
 
 const UnallocatedSubjects = () => {
   const [subjects, setSubjects] = useState<Subject[]>([])
-  const [courses, setCourses] = useState<Course[]>([])
   const [scheduledClasses, setScheduledClasses] = useState<ScheduledClass[]>([])
   const [professors, setProfessors] = useState<User[]>([])
   const [semester, setSemester] = useState('2024.1')
   const [year, setYear] = useState(2024)
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   const semesters = ['2023.1', '2023.2', '2024.1', '2024.2', '2025.1', '2025.2']
   const years = [2023, 2024, 2025, 2026]
@@ -39,17 +40,12 @@ const UnallocatedSubjects = () => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [subjectsRes, coursesRes, scheduledRes, professorsRes] = await Promise.all([
-          api.get('/disciplinas'),
-          api.get('/cursos'),
-          api.get('/aulas'),
-          api.get('/gerenciar')
-        ])
-
-        setSubjects(subjectsRes.data)
-        setCourses(coursesRes.data)
-        setScheduledClasses(scheduledRes.data)
-        setProfessors(professorsRes.data.filter((user: User) => user.papel === 'professor'))
+        const subjectsResponse = await mockApi.get<Subject[]>('/disciplinas')
+        const scheduledResponse = await mockApi.get<ScheduledClass[]>('/aulas')
+        const professorsResponse = await mockApi.get<User[]>('/gerenciar')
+        setSubjects(subjectsResponse.data)
+        setScheduledClasses(scheduledResponse.data)
+        setProfessors(professorsResponse.data.filter((user: User) => user.papel === 'professor'))
       } catch (error) {
         console.error('Error fetching data:', error)
       } finally {
@@ -60,13 +56,21 @@ const UnallocatedSubjects = () => {
     fetchData()
   }, [semester, year])
 
+  const getSubjectName = (subject: Subject) => subject.nome || subject.name || 'Nome não informado'
+  const getSubjectProfessors = (subject: Subject) => subject.professores ?? subject.professors ?? []
+
   const getUnallocatedSubjects = () => {
-    const allocatedSubjectNames = new Set(scheduledClasses.filter(sc => sc.periodo_letivo === semester).map(sc => sc.disciplina))
-    return subjects.filter(subject => !allocatedSubjectNames.has(subject.nome))
+    const allocatedSubjectIds = new Set(scheduledClasses.filter(sc => sc.periodo_letivo === semester).map(sc => sc.disciplina))
+    return subjects.filter(subject => !allocatedSubjectIds.has(String(subject.id)))
   }
 
-  const getProfessorNames = (professorIds: number[]) => {
-    return professorIds.map(id => professors.find(p => p.id === id)?.first_name || 'N/A').join(', ')
+  const getProfessorNames = (professorIds: (number | string)[]) => {
+    return professorIds
+      .map(id => {
+        const professor = professors.find(p => p.id === id || p.username === id || p.first_name === id)
+        return professor?.first_name || professor?.username || 'N/A'
+      })
+      .join(', ')
   }
 
   const unallocatedSubjects = getUnallocatedSubjects()
@@ -82,6 +86,9 @@ const UnallocatedSubjects = () => {
 
   return (
     <main style={{ maxWidth: 1200, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/dashboard')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <h1>Disciplinas Não Alocadas</h1>
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, alignItems: 'center' }}>
@@ -143,12 +150,9 @@ const UnallocatedSubjects = () => {
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
               }}
             >
-              <h3 style={{ margin: '0 0 8px 0', color: '#856404' }}>{subject.nome}</h3>
+              <h3 style={{ margin: '0 0 8px 0', color: '#856404' }}>{getSubjectName(subject)}</h3>
               <p style={{ margin: '4px 0', color: '#856404' }}>
-                <strong>Curso:</strong> {getCourseName(subject.curso)}
-              </p>
-              <p style={{ margin: '4px 0', color: '#856404' }}>
-                <strong>Professores:</strong> {subject.professores.length > 0 ? getProfessorNames(subject.professores) : 'Nenhum professor atribuído'}
+                <strong>Professores:</strong> {getSubjectProfessors(subject).length > 0 ? getProfessorNames(getSubjectProfessors(subject)) : 'Nenhum professor atribuído'}
               </p>
               <div style={{
                 marginTop: 12,

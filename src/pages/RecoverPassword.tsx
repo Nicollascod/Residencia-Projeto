@@ -1,10 +1,11 @@
 import { type FormEvent, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 const RecoverPassword = () => {
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const navigate = useNavigate()
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -24,6 +25,9 @@ const RecoverPassword = () => {
 
   return (
     <main style={{ maxWidth: 420, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <h1>Recuperar Senha</h1>
       <p>Digite seu email para receber instruções de recuperação de senha.</p>
 

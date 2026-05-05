@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import api from '../services/api'
+import mockApi from '../services/mockApi'
 
 interface Course {
   id: string
@@ -30,12 +30,10 @@ const SubjectForm = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [coursesRes, usersRes] = await Promise.all([
-          api.get('/courses'),
-          api.get('/users')
-        ])
-        setCourses(coursesRes.data)
-        setProfessors(usersRes.data.filter((user: User) => user.roles.includes('professor')))
+        const coursesResponse = await mockApi.get<Course[]>('/courses')
+        const usersResponse = await mockApi.get<User[]>('/users')
+        setCourses(coursesResponse.data)
+        setProfessors(usersResponse.data.filter((user: User) => user.roles.includes('professor')))
       } catch (error) {
         console.error('Error fetching data:', error)
       }
@@ -45,7 +43,7 @@ const SubjectForm = () => {
     if (isEditing) {
       const fetchSubject = async () => {
         try {
-          const response = await api.get(`/subjects/${id}`)
+          const response = await mockApi.get<Subject>(`/subjects/${id}`)
           setSubject(response.data)
         } catch (error) {
           console.error('Error fetching subject:', error)
@@ -59,9 +57,9 @@ const SubjectForm = () => {
     e.preventDefault()
     try {
       if (isEditing) {
-        await api.put(`/subjects/${id}`, subject)
+        await mockApi.put(`/subjects/${id}`, subject)
       } else {
-        await api.post('/subjects', subject)
+        await mockApi.post('/subjects', subject)
       }
       navigate('/subjects')
     } catch (error) {
@@ -80,6 +78,9 @@ const SubjectForm = () => {
 
   return (
     <main style={{ maxWidth: 600, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/subjects')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <h1>{isEditing ? 'Editar Disciplina' : 'Nova Disciplina'}</h1>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>

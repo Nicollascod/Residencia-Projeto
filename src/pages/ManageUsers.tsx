@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import type { Role, User } from '../context/auth-types'
 
@@ -7,6 +8,7 @@ const availableCourses = ['Matemática', 'Física', 'Química', 'Biologia', 'Por
 
 const ManageUsers = () => {
   const auth = useAuth()
+  const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [selectedRoles, setSelectedRoles] = useState<Role[]>([])
@@ -119,6 +121,9 @@ const ManageUsers = () => {
 
   return (
     <main style={{ maxWidth: 1200, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/dashboard')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <h1>Gerenciar Usuários</h1>
       <p>Somente o Coordenador Geral pode criar, editar e gerenciar usuários.</p>
 

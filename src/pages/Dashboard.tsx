@@ -53,6 +53,18 @@ const Dashboard = () => {
             <Link to="/subjects" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
               Disciplinas
             </Link>
+            <Link to="/professors" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
+              Professores
+            </Link>
+            <Link to="/rooms" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
+              Salas
+            </Link>
+            <Link to="/schedule" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
+              Horário
+            </Link>
+            <Link to="/unallocated-subjects" style={{ padding: '10px 14px', border: '1px solid #ccc', textDecoration: 'none' }}>
+              Disciplinas Não Alocadas
+            </Link>
           </>
         )}
       </nav>

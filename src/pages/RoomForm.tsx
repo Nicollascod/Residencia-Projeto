@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import api from '../services/api'
+import mockApi from '../services/mockApi'
 
 interface Room {
   id?: string
@@ -46,7 +46,7 @@ const RoomForm = () => {
     if (isEditing) {
       const fetchRoom = async () => {
         try {
-          const response = await api.get(`/rooms/${id}`)
+          const response = await mockApi.get<Room>(`/rooms/${id}`)
           setRoom(response.data)
         } catch (error) {
           console.error('Error fetching room:', error)
@@ -73,9 +73,9 @@ const RoomForm = () => {
     e.preventDefault()
     try {
       if (isEditing) {
-        await api.put(`/rooms/${id}`, room)
+        await mockApi.put(`/rooms/${id}`, room)
       } else {
-        await api.post('/rooms', room)
+        await mockApi.post('/rooms', room)
       }
       navigate('/rooms')
     } catch (error) {
@@ -87,6 +87,9 @@ const RoomForm = () => {
 
   return (
     <main style={{ maxWidth: 600, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/rooms')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <h1>{isEditing ? 'Editar Sala' : 'Nova Sala'}</h1>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import api from '../services/api'
+import mockApi from '../services/mockApi'
 
 interface User {
   username: string
@@ -35,8 +35,18 @@ const ProfessorForm = () => {
     if (isEditing) {
       const fetchProfessor = async () => {
         try {
-          const response = await api.get(`/professors/${username}`)
-          setProfessor(response.data)
+          const response = await mockApi.get<Professor>(`/professors/${username}`)
+          const fetched = response.data as any
+          const normalizedProfessor: Professor = {
+            user: fetched.user ?? {
+              username: fetched.username ?? '',
+              name: fetched.name ?? '',
+              email: fetched.email ?? '',
+              roles: fetched.roles ?? ['professor']
+            },
+            availability: Array.isArray(fetched.availability) ? fetched.availability : []
+          }
+          setProfessor(normalizedProfessor)
         } catch (error) {
           console.error('Error fetching professor:', error)
         }
@@ -69,9 +79,9 @@ const ProfessorForm = () => {
     e.preventDefault()
     try {
       if (isEditing) {
-        await api.put(`/professors/${username}`, professor)
+        await mockApi.put(`/professors/${username}`, professor)
       } else {
-        await api.post('/professors', professor)
+        await mockApi.post('/professors', professor)
       }
       navigate('/professors')
     } catch (error) {
@@ -85,6 +95,9 @@ const ProfessorForm = () => {
 
   return (
     <main style={{ maxWidth: 800, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/professors')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <h1>{isEditing ? 'Editar Professor' : 'Novo Professor'}</h1>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
@@ -143,7 +156,7 @@ const ProfessorForm = () => {
             {daysOfWeek.map(day => {
               const avail = getAvailabilityForDay(day)
               return (
-                <>
+                <Fragment key={day}>
                   <div>{day}</div>
                   <input
                     type="time"
@@ -157,7 +170,7 @@ const ProfessorForm = () => {
                     onChange={(e) => handleAvailabilityChange(day, 'endTime', e.target.value)}
                     style={{ padding: 4 }}
                   />
-                </>
+                </Fragment>
               )
             })}
           </div>

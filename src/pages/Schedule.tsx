@@ -1,16 +1,21 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ScheduleGrid from '../components/ScheduleGrid'
 
 const Schedule = () => {
   const [viewType, setViewType] = useState<'class' | 'professor' | 'room'>('class')
   const [semester, setSemester] = useState('2024.1')
   const [year, setYear] = useState(2024)
+  const navigate = useNavigate()
 
   const semesters = ['2023.1', '2023.2', '2024.1', '2024.2', '2025.1', '2025.2']
   const years = [2023, 2024, 2025, 2026]
 
   return (
     <main style={{ maxWidth: 1400, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/dashboard')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <h1>Grade Horária</h1>
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, alignItems: 'center', flexWrap: 'wrap' }}>

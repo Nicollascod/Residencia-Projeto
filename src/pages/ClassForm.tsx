@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import api from '../services/api'
+import mockApi from '../services/mockApi'
 
 interface Course {
   id: string
@@ -24,7 +24,7 @@ const ClassForm = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const response = await api.get('/courses')
+        const response = await mockApi.get<Course[]>('/courses')
         setCourses(response.data)
       } catch (error) {
         console.error('Error fetching courses:', error)
@@ -35,7 +35,7 @@ const ClassForm = () => {
     if (isEditing) {
       const fetchClass = async () => {
         try {
-          const response = await api.get(`/classes/${id}`)
+          const response = await mockApi.get<Class>(`/classes/${id}`)
           setCls(response.data)
         } catch (error) {
           console.error('Error fetching class:', error)
@@ -49,9 +49,9 @@ const ClassForm = () => {
     e.preventDefault()
     try {
       if (isEditing) {
-        await api.put(`/classes/${id}`, cls)
+        await mockApi.put(`/classes/${id}`, cls)
       } else {
-        await api.post('/classes', cls)
+        await mockApi.post('/classes', cls)
       }
       navigate('/classes')
     } catch (error) {
@@ -66,6 +66,9 @@ const ClassForm = () => {
 
   return (
     <main style={{ maxWidth: 600, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/classes')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <h1>{isEditing ? 'Editar Turma' : 'Nova Turma'}</h1>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>

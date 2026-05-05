@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import api from '../services/api'
+import mockApi from '../services/mockApi'
 
 interface Class {
   id: number
@@ -63,19 +63,16 @@ const ScheduleGrid = ({ viewType, semester, year }: ScheduleGridProps) => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [scheduledRes, classesRes, subjectsRes, roomsRes, professorsRes] = await Promise.all([
-          api.get('/aulas'),
-          api.get('/turmas'),
-          api.get('/disciplinas'),
-          api.get('/salas'),
-          api.get('/gerenciar')
-        ])
-
-        setScheduledClasses(scheduledRes.data)
-        setClasses(classesRes.data)
-        setSubjects(subjectsRes.data)
-        setRooms(roomsRes.data)
-        setProfessors(professorsRes.data.filter((user: User) => user.papel === 'professor'))
+        const scheduledResponse = await mockApi.get<ScheduledClass[]>('/aulas')
+        const classesResponse = await mockApi.get<Class[]>('/turmas')
+        const subjectsResponse = await mockApi.get<Subject[]>('/disciplinas')
+        const roomsResponse = await mockApi.get<Room[]>('/salas')
+        const professorsResponse = await mockApi.get<User[]>('/gerenciar')
+        setScheduledClasses(scheduledResponse.data)
+        setClasses(classesResponse.data)
+        setSubjects(subjectsResponse.data)
+        setRooms(roomsResponse.data)
+        setProfessors(professorsResponse.data.filter((user: User) => user.papel === 'professor'))
       } catch (error) {
         console.error('Error fetching schedule data:', error)
       } finally {
@@ -122,7 +119,7 @@ const ScheduleGrid = ({ viewType, semester, year }: ScheduleGridProps) => {
       let matchesItem = false
       switch (viewType) {
         case 'class':
-          matchesItem = sc.turma === getYAxisItems().find(c => c.id === itemId)?.nome
+          matchesItem = sc.turma === (getYAxisItems().find(c => c.id === itemId) as Class)?.nome
           break
         case 'professor':
           matchesItem = sc.professor === itemId

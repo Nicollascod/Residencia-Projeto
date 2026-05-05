@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import api from '../services/api'
+import mockApi from '../services/mockApi'
 
 interface Course {
   id?: string
@@ -18,7 +18,7 @@ const CourseForm = () => {
     if (isEditing) {
       const fetchCourse = async () => {
         try {
-          const response = await api.get(`/courses/${id}`)
+          const response = await mockApi.get<Course>(`/courses/${id}`)
           setCourse(response.data)
         } catch (error) {
           console.error('Error fetching course:', error)
@@ -32,9 +32,9 @@ const CourseForm = () => {
     e.preventDefault()
     try {
       if (isEditing) {
-        await api.put(`/courses/${id}`, course)
+        await mockApi.put(`/courses/${id}`, course)
       } else {
-        await api.post('/courses', course)
+        await mockApi.post('/courses', course)
       }
       navigate('/courses')
     } catch (error) {
@@ -48,6 +48,9 @@ const CourseForm = () => {
 
   return (
     <main style={{ maxWidth: 600, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/courses')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <h1>{isEditing ? 'Editar Curso' : 'Novo Curso'}</h1>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>

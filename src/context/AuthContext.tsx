@@ -1,14 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { AuthContext } from './auth-context'
 import type { Role, User, AuthContextType } from './auth-types'
-import api from '../services/api'
 
 type StoredUser = User & {
   password: string
 }
 
 const STORAGE_USER_KEY = 'auth_user'
-const STORAGE_TOKEN_KEY = 'auth_token'
 const STORAGE_USERS_KEY = 'auth_users'
 
 const defaultUsers: StoredUser[] = [
@@ -68,15 +66,9 @@ function loadStoredUser(): User | null {
   }
 }
 
-function loadStoredToken(): string | null {
-  return localStorage.getItem(STORAGE_TOKEN_KEY)
-}
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(loadStoredUser())
   const [storedUsers, setStoredUsers] = useState<StoredUser[]>(loadStoredUsers)
-  const [token, setToken] = useState<string | null>(loadStoredToken())
-  const [isDjangoMode, setIsDjangoMode] = useState(false)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(storedUsers))
@@ -90,52 +82,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user])
 
-  useEffect(() => {
-    if (token) {
-      localStorage.setItem(STORAGE_TOKEN_KEY, token)
-      // Configurar token no axios
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-    } else {
-      localStorage.removeItem(STORAGE_TOKEN_KEY)
-      delete api.defaults.headers.common['Authorization']
-    }
-  }, [token])
-
   const login = async (username: string, password: string) => {
-    // Tentar login com Django primeiro
-    try {
-const response = await api.post('/auth/token/', {
-        username: username,
-        password: password,
-      })
-      
-      const { access, refresh } = response.data
-      setToken(access)
-      
-      // Buscar dados do usuário
-      const userResponse = await api.get('/gerenciar/', {
-        headers: { Authorization: `Bearer ${access}` }
-      })
-      
-      const djangoUser = userResponse.data.find((u: any) => u.username === username)
-      if (djangoUser) {
-        const loggedUser: User = {
-          username: djangoUser.username,
-          roles: [djangoUser.papel],
-          active: djangoUser.ativo,
-          courses: [],
-        }
-        setUser(loggedUser)
-        setIsDjangoMode(true)
-        // Salvar refresh token para depois
-        localStorage.setItem('refresh_token', refresh)
-        return
-      }
-    } catch (error: any) {
-      console.log('Django login falhou, tentando modo local', error.message)
-    }
-
-    // Fallback para autenticação local (modo desenvolvimento)
+    // Autenticação local (modo standalone)
     const matched = storedUsers.find(
       (item) => item.username.toLowerCase() === username.toLowerCase(),
     )
@@ -156,14 +104,10 @@ const response = await api.post('/auth/token/', {
     }
 
     setUser(loggedUser)
-    setToken(matched.username) // Usar username como mock token
-    setIsDjangoMode(false)
   }
 
   const logout = () => {
     setUser(null)
-    setToken(null)
-    setIsDjangoMode(false)
   }
 
   const createUser = async (username: string, password: string, roles: Role[], courses: string[] = []) => {
@@ -239,7 +183,6 @@ const response = await api.post('/auth/token/', {
   const resetUsers = () => {
     setStoredUsers(defaultUsers)
     setUser(null)
-    setToken(null)
   }
 
   const contextValue: AuthContextType = {

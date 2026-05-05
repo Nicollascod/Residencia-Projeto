@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
-import api from '../services/api'
+import mockApi from '../services/mockApi'
 
 interface User {
   username: string
@@ -14,11 +14,12 @@ const Professors = () => {
   const [professors, setProfessors] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const auth = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const fetchProfessors = async () => {
       try {
-        const response = await api.get('/users')
+        const response = await mockApi.get<User[]>('/users')
         const profs = response.data.filter((user: User) => user.roles.includes('professor'))
         setProfessors(profs)
       } catch (error) {
@@ -36,6 +37,9 @@ const Professors = () => {
 
   return (
     <main style={{ maxWidth: 1200, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/dashboard')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1>Professores</h1>
         {auth.user?.roles.includes('coordenador-geral') && (

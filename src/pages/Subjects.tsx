@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
-import api from '../services/api'
+import mockApi from '../services/mockApi'
 
 interface Course {
   id: string
@@ -20,16 +20,15 @@ const Subjects = () => {
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedCourse, setSelectedCourse] = useState<string>('')
   const auth = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [subjectsRes, coursesRes] = await Promise.all([
-          api.get('/subjects'),
-          api.get('/courses')
-        ])
-        setSubjects(subjectsRes.data)
-        setCourses(coursesRes.data)
+        const subjectsResponse = await mockApi.get<Subject[]>('/subjects')
+        const coursesResponse = await mockApi.get<Course[]>('/courses')
+        setSubjects(subjectsResponse.data)
+        setCourses(coursesResponse.data)
       } catch (error) {
         console.error('Error fetching data:', error)
       }
@@ -41,6 +40,9 @@ const Subjects = () => {
 
   return (
     <main style={{ maxWidth: 1200, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/dashboard')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1>Disciplinas</h1>
         {auth.user?.roles.includes('coordenador') && (

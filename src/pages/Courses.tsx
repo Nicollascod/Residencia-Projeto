@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
-import api from '../services/api'
+import mockApi from '../services/mockApi'
 
 interface Course {
   id: string
@@ -12,13 +12,14 @@ interface Course {
 const Courses = () => {
   const [courses, setCourses] = useState<Course[]>([])
   const auth = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     // Fetch courses from API
     const fetchCourses = async () => {
       try {
-        const response = await api.get('/courses')
-        setCourses(response.data)
+        const response = await mockApi.get('/courses')
+        setCourses(response.data as Course[])
       } catch (error) {
         console.error('Error fetching courses:', error)
       }
@@ -28,6 +29,9 @@ const Courses = () => {
 
   return (
     <main style={{ maxWidth: 1200, margin: '48px auto', padding: 24 }}>
+      <button onClick={() => navigate('/dashboard')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1>Cursos</h1>
         {auth.user?.roles.includes('coordenador-geral') && (
