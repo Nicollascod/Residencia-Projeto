@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import mockApi from '../services/mockApi'
+﻿import React from 'react'
 
 interface Class {
   id: number
@@ -7,30 +6,32 @@ interface Class {
 }
 
 interface Subject {
-  id: number
-  nome: string
-  professores: number[]
+  id: number | string
+  nome?: string
+  name?: string
+  professores?: (number | string)[]
 }
 
 interface Room {
-  id: number
-  nome: string
+  id: number | string
+  nome?: string
+  name?: string
 }
 
-interface User {
-  id: number
+interface Professor {
+  id: number | string
   username: string
-  first_name: string
-  papel: string
+  name: string
+  active?: boolean
 }
 
-interface ScheduledClass {
+export interface ScheduledClass {
   id: string
   disciplina: string
-  turma: string
-  professor: number // ID
-  sala: number // ID
-  dia_semana: string // 'SEG', 'TER', etc.
+  turma: number | string
+  professor: number | string
+  sala: number | string
+  dia_semana: string
   horario_inicio: string
   horario_fim: string
   periodo_letivo: string
@@ -39,7 +40,18 @@ interface ScheduledClass {
 interface ScheduleGridProps {
   viewType: 'class' | 'professor' | 'room'
   semester: string
-  year: number
+  scheduledClasses: ScheduledClass[]
+  classes: Class[]
+  subjects: Subject[]
+  rooms: Room[]
+  professors: Professor[]
+  editMode: boolean
+  dragOverCellKey: string | null
+  onEmptyCellClick: (itemId: number, itemName: string, day: string, timeSlot: string) => void
+  onCellDrop: (event: React.DragEvent<HTMLTableCellElement>, itemId: number, day: string, timeSlot: string) => void
+  onCellDragOver: (event: React.DragEvent<HTMLTableCellElement>, cellKey: string) => void
+  onCellDragLeave: (cellKey: string) => void
+  onScheduledClassDragStart: (event: React.DragEvent<HTMLDivElement>, scheduledClassId: string) => void
 }
 
 const daysOfWeek = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']
@@ -51,38 +63,29 @@ const timeSlots = [
   '19:00-19:50', '20:00-20:50', '21:00-21:50', '22:00-22:50'
 ]
 
-const ScheduleGrid = ({ viewType, semester, year }: ScheduleGridProps) => {
-  const [scheduledClasses, setScheduledClasses] = useState<ScheduledClass[]>([])
-  const [classes, setClasses] = useState<Class[]>([])
-  const [subjects, setSubjects] = useState<Subject[]>([])
-  const [rooms, setRooms] = useState<Room[]>([])
-  const [professors, setProfessors] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
+const normalizeTime = (time: string) => {
+  if (time.length === 8 && time.includes(':')) {
+    return time.slice(0, 5)
+  }
+  return time
+}
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        const scheduledResponse = await mockApi.get<ScheduledClass[]>('/aulas')
-        const classesResponse = await mockApi.get<Class[]>('/turmas')
-        const subjectsResponse = await mockApi.get<Subject[]>('/disciplinas')
-        const roomsResponse = await mockApi.get<Room[]>('/salas')
-        const professorsResponse = await mockApi.get<User[]>('/gerenciar')
-        setScheduledClasses(scheduledResponse.data)
-        setClasses(classesResponse.data)
-        setSubjects(subjectsResponse.data)
-        setRooms(roomsResponse.data)
-        setProfessors(professorsResponse.data.filter((user: User) => user.papel === 'professor'))
-      } catch (error) {
-        console.error('Error fetching schedule data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [semester, year])
-
+const ScheduleGrid = ({
+  viewType,
+  semester,
+  scheduledClasses,
+  classes,
+  subjects,
+  rooms,
+  professors,
+  editMode,
+  dragOverCellKey,
+  onEmptyCellClick,
+  onCellDrop,
+  onCellDragOver,
+  onCellDragLeave,
+  onScheduledClassDragStart
+}: ScheduleGridProps) => {
   const getYAxisItems = () => {
     switch (viewType) {
       case 'class':
@@ -96,62 +99,59 @@ const ScheduleGrid = ({ viewType, semester, year }: ScheduleGridProps) => {
     }
   }
 
-  const getItemName = (item: Class | User | Room) => {
+  const getItemId = (item: Class | Professor | Room) => Number(item.id)
+
+  const isSameId = (a: number | string, b: number | string) => String(a) === String(b)
+
+  const getItemName = (item: Class | Professor | Room) => {
     switch (viewType) {
       case 'class':
         return (item as Class).nome
       case 'professor':
-        return (item as User).first_name
+        return (item as Professor).name
       case 'room':
-        return (item as Room).nome
+        return (item as Room).nome || (item as Room).name || ''
       default:
         return ''
     }
   }
 
-  const getItemId = (item: Class | User | Room) => {
-    return item.id
-  }
-
   const getScheduledClassForCell = (itemId: number, dayIndex: number, timeSlot: string) => {
     const [startTime] = timeSlot.split('-')
+
     return scheduledClasses.find(sc => {
       let matchesItem = false
       switch (viewType) {
         case 'class':
-          matchesItem = sc.turma === (getYAxisItems().find(c => c.id === itemId) as Class)?.nome
+          matchesItem = isSameId(sc.turma, itemId)
           break
         case 'professor':
-          matchesItem = sc.professor === itemId
+          matchesItem = isSameId(sc.professor, itemId)
           break
         case 'room':
-          matchesItem = sc.sala === itemId
+          matchesItem = isSameId(sc.sala, itemId)
           break
       }
 
       return matchesItem &&
-             sc.dia_semana === daysOfWeek[dayIndex] &&
-             sc.horario_inicio === startTime + ':00' &&
-             sc.periodo_letivo === semester
+        sc.dia_semana === daysOfWeek[dayIndex] &&
+        normalizeTime(sc.horario_inicio) === normalizeTime(startTime) &&
+        sc.periodo_letivo === semester
     })
   }
 
   const getScheduledClassInfo = (scheduledClass: ScheduledClass) => {
-    const subject = subjects.find(s => s.nome === scheduledClass.disciplina)
-    const professor = professors.find(p => p.id === scheduledClass.professor)
-    const room = rooms.find(r => r.id === scheduledClass.sala)
-    const class_ = classes.find(c => c.nome === scheduledClass.turma)
+    const subject = subjects.find(s => String(s.id) === String(scheduledClass.disciplina))
+    const professor = professors.find(p => isSameId(p.id, scheduledClass.professor))
+    const room = rooms.find(r => isSameId(r.id, scheduledClass.sala))
+    const class_ = classes.find(c => isSameId(c.id, scheduledClass.turma))
 
     return {
-      subjectName: subject?.nome || 'N/A',
-      professorName: professor?.first_name || 'N/A',
-      roomName: room?.nome || 'N/A',
+      subjectName: subject?.nome || subject?.name || 'N/A',
+      professorName: professor?.name || 'N/A',
+      roomName: room?.nome || room?.name || 'N/A',
       className: class_?.nome || 'N/A'
     }
-  }
-
-  if (loading) {
-    return <div style={{ textAlign: 'center', padding: 24 }}>Carregando grade horária...</div>
   }
 
   const yAxisItems = getYAxisItems()
@@ -189,24 +189,55 @@ const ScheduleGrid = ({ viewType, semester, year }: ScheduleGridProps) => {
               </td>
               {dayLabels.map((day, dayIndex) =>
                 timeSlots.map(slot => {
+                  const cellKey = `${getItemId(item)}-${day}-${slot}`
                   const scheduledClass = getScheduledClassForCell(getItemId(item), dayIndex, slot)
                   const info = scheduledClass ? getScheduledClassInfo(scheduledClass) : null
+                  const isEmpty = !scheduledClass
+                  const isActiveDrag = dragOverCellKey === cellKey
 
                   return (
                     <td
-                      key={`${day}-${slot}`}
+                      key={cellKey}
+                      onClick={() => {
+                        if (editMode && isEmpty) {
+                          onEmptyCellClick(getItemId(item), getItemName(item), daysOfWeek[dayIndex], slot)
+                        }
+                      }}
+                      onDragOver={(event) => {
+                        if (!editMode) return
+                        event.preventDefault()
+                        onCellDragOver(event, cellKey)
+                      }}
+                      onDragLeave={() => {
+                        if (!editMode) return
+                        onCellDragLeave(cellKey)
+                      }}
+                      onDrop={(event) => {
+                        if (!editMode) return
+                        onCellDrop(event, getItemId(item), daysOfWeek[dayIndex], slot)
+                      }}
                       style={{
                         border: '1px solid #ddd',
                         padding: '4px',
-                        backgroundColor: scheduledClass ? '#e3f2fd' : '#fff',
-                        cursor: scheduledClass ? 'pointer' : 'default',
+                        backgroundColor: scheduledClass ? '#e3f2fd' : isActiveDrag ? '#d1ecf1' : '#fff',
+                        cursor: editMode ? (isEmpty ? 'pointer' : 'grab') : scheduledClass ? 'pointer' : 'default',
                         minHeight: '60px',
-                        verticalAlign: 'top'
+                        verticalAlign: 'top',
+                        transition: 'background-color 0.15s ease'
                       }}
                       title={info ? `${info.subjectName} - ${info.professorName} - ${info.roomName}` : ''}
                     >
                       {scheduledClass && (
-                        <div style={{ fontSize: '11px', lineHeight: '1.2' }}>
+                        <div
+                          draggable={editMode}
+                          onDragStart={(event) => onScheduledClassDragStart(event, scheduledClass.id)}
+                          style={{
+                            fontSize: '11px',
+                            lineHeight: '1.2',
+                            cursor: editMode ? 'grab' : 'default'
+                          }}
+                          title={editMode ? 'Arraste para realocar ou arraste para a lixeira' : ''}
+                        >
                           <div style={{ fontWeight: 'bold', color: '#1976d2' }}>{info?.subjectName}</div>
                           {viewType !== 'professor' && <div>Prof: {info?.professorName}</div>}
                           {viewType !== 'room' && <div>Sala: {info?.roomName}</div>}

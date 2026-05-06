@@ -14,8 +14,8 @@ export const mockData = {
     { username: 'professor', name: 'Professor Silva', email: 'prof@school.com', roles: ['professor'], active: true, courses: ['Português', 'História'] },
   ],
   professors: [
-    { username: 'Cleber Moreira', name: 'Cleber Moreira', active: true },
-    { username: 'Dra. Adriana', name: 'Dra. Adriana', active: true },
+    { id: 1, username: 'Cleber Moreira', name: 'Cleber Moreira', active: true },
+    { id: 2, username: 'Dra. Adriana', name: 'Dra. Adriana', active: true },
   ],
   aulas: [
     { id: '1', disciplina: '1', turma: '1', professor: 1, sala: 1, dia_semana: 'SEG', horario_inicio: '08:00', horario_fim: '09:50', periodo_letivo: '2024.1' },
