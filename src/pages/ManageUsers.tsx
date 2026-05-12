@@ -10,6 +10,8 @@ const ManageUsers = () => {
   const auth = useAuth()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [selectedRoles, setSelectedRoles] = useState<Role[]>([])
   const [selectedCourses, setSelectedCourses] = useState<string[]>([])
@@ -62,9 +64,11 @@ const ManageUsers = () => {
         setMessage(`Usuário ${editingUser.username} atualizado com sucesso.`)
         setEditingUser(null)
       } else {
-        await auth.createUser(username, password, selectedRoles, selectedCourses)
+        await auth.createUser(username, password, selectedRoles, selectedCourses, email, name)
         setMessage(`Usuário ${username} criado com sucesso.`)
         setUsername('')
+        setName('')
+        setEmail('')
         setPassword('')
         setSelectedRoles([])
         setSelectedCourses([])
@@ -77,6 +81,8 @@ const ManageUsers = () => {
   const handleEdit = (user: User) => {
     setEditingUser(user)
     setUsername(user.username)
+    setName(user.name || '')
+    setEmail(user.email || '')
     setPassword('')
     setSelectedRoles(user.roles)
     setSelectedCourses(user.courses || [])
@@ -85,6 +91,8 @@ const ManageUsers = () => {
   const handleCancelEdit = () => {
     setEditingUser(null)
     setUsername('')
+    setName('')
+    setEmail('')
     setPassword('')
     setSelectedRoles([])
     setSelectedCourses([])
@@ -139,6 +147,24 @@ const ManageUsers = () => {
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 disabled={!!editingUser}
+                style={{ width: '100%', padding: 10, marginTop: 6 }}
+              />
+            </label>
+            <label>
+              Nome Completo
+              <input
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                style={{ width: '100%', padding: 10, marginTop: 6 }}
+              />
+            </label>
+            <label>
+              Email
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 style={{ width: '100%', padding: 10, marginTop: 6 }}
               />
             </label>
@@ -245,6 +271,11 @@ const ManageUsers = () => {
                 }}>
                   <div>
                     <strong>{user.username}</strong>
+                    {user.email && (
+                      <div style={{ fontSize: '0.9em', color: '#666', marginTop: 4 }}>
+                        Email: {user.email}
+                      </div>
+                    )}
                     <div style={{ fontSize: '0.9em', color: '#666', marginTop: 4 }}>
                       Papéis: {user.roles.join(', ')}
                     </div>

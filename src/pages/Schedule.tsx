@@ -56,6 +56,8 @@ const Schedule = () => {
   const [hasPendingChanges, setHasPendingChanges] = useState(false)
   const [dragOverCellKey, setDragOverCellKey] = useState<string | null>(null)
   const [dragOverTrash, setDragOverTrash] = useState(false)
+  const [conflictingCells, setConflictingCells] = useState<Map<string, { type: 'professor' | 'sala' | 'turma'; name: string }[]>>(new Map())
+  const [draggedPayload, setDraggedPayload] = useState<DragPayload | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<{
     itemId: number
@@ -111,6 +113,41 @@ const Schedule = () => {
 
   const currentScheduledClasses = editMode ? draftScheduledClasses : scheduledClasses
 
+  // Função para obter conflitos específicos (profesor, sala ou turma)
+  const getConflictDetails = (candidate: {
+    id?: string
+    turma: number | string
+    professor: number | string
+    sala: number | string
+    dia_semana: string
+    horario_inicio: string
+    periodo_letivo: string
+  }) => {
+    const conflicts: { type: 'professor' | 'sala' | 'turma'; name: string }[] = []
+    
+    currentScheduledClasses.forEach(sc => {
+      if (candidate.id && sc.id === candidate.id) return
+      if (sc.periodo_letivo !== candidate.periodo_letivo) return
+      if (sc.dia_semana !== candidate.dia_semana) return
+      if (normalizeTime(sc.horario_inicio) !== normalizeTime(candidate.horario_inicio)) return
+      
+      if (isSameId(sc.professor, candidate.professor)) {
+        const prof = professors.find(p => isSameId(p.id, sc.professor))
+        conflicts.push({ type: 'professor', name: prof?.name || 'Professor desconhecido' })
+      }
+      if (isSameId(sc.sala, candidate.sala)) {
+        const room = rooms.find(r => isSameId(r.id, sc.sala))
+        conflicts.push({ type: 'sala', name: getRoomName(room) })
+      }
+      if (isSameId(sc.turma, candidate.turma)) {
+        const cls = classes.find(c => isSameId(c.id, sc.turma))
+        conflicts.push({ type: 'turma', name: cls?.nome || 'Turma desconhecida' })
+      }
+    })
+    
+    return conflicts
+  }
+
   const getScheduledClassForCell = (itemId: number, day: string, slot: string) => {
     const [startTime] = slot.split('-')
 
@@ -152,6 +189,55 @@ const Schedule = () => {
     })
   }
 
+  const formatConflictMessage = (conflicts: { type: 'professor' | 'sala' | 'turma'; name: string }[]) => {
+    if (conflicts.length === 0) return ''
+    
+    const grouped = {
+      professor: conflicts.filter(c => c.type === 'professor').map(c => c.name),
+      sala: conflicts.filter(c => c.type === 'sala').map(c => c.name),
+      turma: conflicts.filter(c => c.type === 'turma').map(c => c.name)
+    }
+    
+    const messages = []
+    if (grouped.professor.length > 0) messages.push(`Professor ${grouped.professor.join(', ')} já tem aula`)
+    if (grouped.sala.length > 0) messages.push(`Sala ${grouped.sala.join(', ')} já está ocupada`)
+    if (grouped.turma.length > 0) messages.push(`Turma ${grouped.turma.join(', ')} já tem aula`)
+    
+    return messages.join('; ')
+  }
+
+  // Verificar se uma combinação específica causaria conflito (para desabilitar selects)
+  const woulCauseConflict = (updatedForm: {
+    classId: number
+    subjectId: number | string
+    professorId: number | string
+    roomId: number | string
+  }) => {
+    if (!selectedSlot || !updatedForm.classId || !updatedForm.professorId || !updatedForm.roomId) return false
+    
+    const startTime = normalizeTime(selectedSlot.timeSlot.split('-')[0])
+    const candidate = {
+      turma: updatedForm.classId,
+      professor: updatedForm.professorId,
+      sala: updatedForm.roomId,
+      dia_semana: selectedSlot.day,
+      horario_inicio: startTime,
+      periodo_letivo: semester
+    }
+    
+    return getConflictDetails(candidate).length > 0
+  }
+
+  // Validar se o horário está dentro do horário comercial das aulas (07:00 - 22:50)
+  const isTimeOutOfCourseHours = (time: string): boolean => {
+    const normalizedTime = normalizeTime(time)
+    const [hours, minutes] = normalizedTime.split(':').map(Number)
+    const timeInMinutes = hours * 60 + minutes
+    
+    // Primeira aula: 07:00 (420 minutos), Última aula: 22:00 (1320 minutos)
+    return timeInMinutes < 7 * 60 || timeInMinutes >= 23 * 60
+  }
+
   const unallocatedSubjects = subjects.filter(subject =>
     !currentScheduledClasses.some(sc => sc.periodo_letivo === semester && String(sc.disciplina) === String(subject.id))
   )
@@ -189,6 +275,13 @@ const Schedule = () => {
     }
 
     const startTime = normalizeTime(selectedSlot.timeSlot.split('-')[0])
+    
+    // Verificar se está fora do horário permitido
+    if (isTimeOutOfCourseHours(startTime)) {
+      setAllocationError('⏰ Horário fora do permitido! As aulas devem ser entre 07:00 e 22:00.')
+      return
+    }
+
     const endTime = normalizeTime(selectedSlot.timeSlot.split('-')[1])
     const newSchedule: ScheduledClass = {
       id: Date.now().toString(),
@@ -202,8 +295,9 @@ const Schedule = () => {
       periodo_letivo: semester
     }
 
-    if (hasScheduleConflict(newSchedule)) {
-      setAllocationError('Conflito de horário: turma, professor ou sala já estão ocupados neste horário.')
+    const conflicts = getConflictDetails(newSchedule)
+    if (conflicts.length > 0) {
+      setAllocationError(`Conflito de horário: ${formatConflictMessage(conflicts)}.`)
       return
     }
 
@@ -221,6 +315,8 @@ const Schedule = () => {
   const handleCellDrop = (event: React.DragEvent<HTMLTableCellElement>, itemId: number, day: string, timeSlot: string) => {
     event.preventDefault()
     setDragOverCellKey(null)
+    setConflictingCells(new Map())
+    setDraggedPayload(null)
 
     if (!editMode) return
     if (isCellOccupied(itemId, day, timeSlot)) return
@@ -244,18 +340,27 @@ const Schedule = () => {
     const selected = currentScheduledClasses.find(sc => sc.id === scheduledClassId)
     if (!selected) return
 
+    const startTime = normalizeTime(timeSlot.split('-')[0])
+    
+    // Verificar se está fora do horário permitido
+    if (isTimeOutOfCourseHours(startTime)) {
+      setAllocationError('⏰ Não é possível realocar: horário fora do permitido! As aulas devem ser entre 07:00 e 22:00.')
+      return
+    }
+
     const updatedSchedule: ScheduledClass = {
       ...selected,
       dia_semana: day,
-      horario_inicio: normalizeTime(timeSlot.split('-')[0]),
+      horario_inicio: startTime,
       horario_fim: normalizeTime(timeSlot.split('-')[1]),
       turma: viewType === 'class' ? itemId : selected.turma,
       professor: viewType === 'professor' ? itemId : selected.professor,
       sala: viewType === 'room' ? itemId : selected.sala
     }
 
-    if (hasScheduleConflict({ ...updatedSchedule, id: scheduledClassId })) {
-      setAllocationError('Não é possível realocar: conflito de turma, professor ou sala neste horário.')
+    const conflicts = getConflictDetails({ ...updatedSchedule, id: scheduledClassId })
+    if (conflicts.length > 0) {
+      setAllocationError(`Conflito de horário: ${formatConflictMessage(conflicts)}.`)
       return
     }
 
@@ -269,24 +374,65 @@ const Schedule = () => {
 
   const handleScheduledClassDragStart = (event: React.DragEvent<HTMLDivElement>, scheduledClassId: string) => {
     if (!editMode) return
-    event.dataTransfer.setData('application/json', JSON.stringify({ type: 'scheduled-class', scheduledClassId }))
+    const payload = { type: 'scheduled-class' as const, scheduledClassId }
+    setDraggedPayload(payload)
+    event.dataTransfer.setData('application/json', JSON.stringify(payload))
     event.dataTransfer.effectAllowed = 'move'
   }
 
   const handleUnallocatedDragStart = (event: React.DragEvent<HTMLDivElement>, subjectId: number) => {
     if (!editMode) return
-    event.dataTransfer.setData('application/json', JSON.stringify({ type: 'unallocated-subject', subjectId }))
+    const payload = { type: 'unallocated-subject' as const, subjectId }
+    setDraggedPayload(payload)
+    event.dataTransfer.setData('application/json', JSON.stringify(payload))
     event.dataTransfer.effectAllowed = 'copy'
   }
 
-  const handleCellDragOver = (_event: React.DragEvent<HTMLTableCellElement>, cellKey: string) => {
+  const handleCellDragOver = (_event: React.DragEvent<HTMLTableCellElement>, cellKey: string, itemId: number, day: string, slot: string) => {
     if (!editMode) return
     setDragOverCellKey(cellKey)
+    
+    // Atualizar conflitos potenciais
+    if (draggedPayload) {
+      try {
+        if (draggedPayload.type === 'scheduled-class') {
+          const selected = currentScheduledClasses.find(sc => sc.id === draggedPayload.scheduledClassId)
+          if (selected) {
+            const updatedSchedule: ScheduledClass = {
+              ...selected,
+              dia_semana: day,
+              horario_inicio: normalizeTime(slot.split('-')[0]),
+              horario_fim: normalizeTime(slot.split('-')[1]),
+              turma: viewType === 'class' ? itemId : selected.turma,
+              professor: viewType === 'professor' ? itemId : selected.professor,
+              sala: viewType === 'room' ? itemId : selected.sala
+            }
+            const conflicts = getConflictDetails({ ...updatedSchedule, id: draggedPayload.scheduledClassId })
+            if (conflicts.length > 0) {
+              setConflictingCells(prev => new Map(prev).set(cellKey, conflicts))
+            } else {
+              setConflictingCells(prev => {
+                const newMap = new Map(prev)
+                newMap.delete(cellKey)
+                return newMap
+              })
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking conflicts:', error)
+      }
+    }
   }
 
   const handleCellDragLeave = (cellKey: string) => {
     if (!editMode) return
     setDragOverCellKey(current => (current === cellKey ? null : current))
+    setConflictingCells(prev => {
+      const newMap = new Map(prev)
+      newMap.delete(cellKey)
+      return newMap
+    })
   }
 
   const handleTrashDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -426,11 +572,13 @@ const Schedule = () => {
       <div style={{ backgroundColor: '#f8f9fa', padding: 16, borderRadius: 8, marginBottom: 16 }}>
         <h3>Instruções:</h3>
         <ul style={{ margin: 0, paddingLeft: 20 }}>
-          <li>Células azuis indicam aulas agendadas</li>
+          <li><strong>Células azuis</strong> indicam aulas agendadas</li>
+          <li><strong>Células vermelhas</strong> durante drag indicam conflito potencial (professor, sala ou turma já ocupados)</li>
           <li>Use o botão "Editar Grade" para habilitar edição</li>
           <li>Clique em um slot vazio para abrir o formulário de alocação</li>
           <li>Arraste disciplina não alocada para um slot ou arraste aulas existentes para realocar</li>
           <li>Arraste uma aula para a lixeira para removê-la</li>
+          <li>No formulário de alocação, opções desabilitadas indicam conflito de horário</li>
         </ul>
       </div>
       {allocationError && (
@@ -451,6 +599,7 @@ const Schedule = () => {
             professors={professors}
             editMode={editMode}
             dragOverCellKey={dragOverCellKey}
+            conflictingCells={conflictingCells}
             onEmptyCellClick={handleCellClick}
             onCellDrop={handleCellDrop}
             onCellDragOver={handleCellDragOver}
@@ -520,6 +669,7 @@ const Schedule = () => {
           professors={professors}
           editMode={editMode}
           dragOverCellKey={dragOverCellKey}
+          conflictingCells={conflictingCells}
           onEmptyCellClick={handleCellClick}
           onCellDrop={handleCellDrop}
           onCellDragOver={handleCellDragOver}
@@ -533,10 +683,20 @@ const Schedule = () => {
           <div style={{ backgroundColor: 'white', borderRadius: 10, padding: 24, width: 'min(95%, 520px)', boxShadow: '0 18px 40px rgba(0,0,0,0.25)' }}>
             <h2 style={{ marginTop: 0 }}>Alocar Aula</h2>
             <p style={{ margin: '8px 0 20px 0' }}><strong>Dia:</strong> {selectedSlot.day} • <strong>Horário:</strong> {selectedSlot.timeSlot}</p>
+            {isTimeOutOfCourseHours(normalizeTime(selectedSlot.timeSlot.split('-')[0])) && (
+              <div style={{ backgroundColor: '#f8d7da', border: '1px solid #f5c2c7', color: '#842029', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+                ⏰ <strong>Aviso:</strong> Este horário está fora do permitido! As aulas devem ser entre 07:00 e 22:00.
+              </div>
+            )}
             <form onSubmit={handleAllocateSubmit} style={{ display: 'grid', gap: 16 }}>
               {allocationError && (
                 <div style={{ backgroundColor: '#f8d7da', border: '1px solid #f5c2c7', color: '#842029', padding: 12, borderRadius: 8 }}>
-                  {allocationError}
+                  ⚠️ {allocationError}
+                </div>
+              )}
+              {woulCauseConflict(allocationForm) && !allocationError && (
+                <div style={{ backgroundColor: '#fff3cd', border: '1px solid #ffecb5', color: '#856404', padding: 12, borderRadius: 8 }}>
+                  ⚠️ Combinação atual causa conflito. Ajuste os campos abaixo.
                 </div>
               )}
               <label>
@@ -546,6 +706,7 @@ const Schedule = () => {
                   onChange={(e) => setAllocationForm(prev => ({ ...prev, classId: Number(e.target.value) }))}
                   style={{ width: '100%', marginTop: 8, padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
                 >
+                  <option value={0}>Selecione uma turma</option>
                   {classes.map(cls => (
                     <option key={cls.id} value={cls.id}>{cls.nome}</option>
                   ))}
@@ -559,6 +720,7 @@ const Schedule = () => {
                   onChange={(e) => setAllocationForm(prev => ({ ...prev, subjectId: Number(e.target.value) }))}
                   style={{ width: '100%', marginTop: 8, padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
                 >
+                  <option value={0}>Selecione uma disciplina</option>
                   {subjects.map(subject => (
                     <option key={subject.id} value={subject.id}>{getSubjectName(subject)}</option>
                   ))}
@@ -572,9 +734,18 @@ const Schedule = () => {
                   onChange={(e) => setAllocationForm(prev => ({ ...prev, professorId: Number(e.target.value) }))}
                   style={{ width: '100%', marginTop: 8, padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
                 >
-                  {professors.map(prof => (
-                    <option key={prof.id} value={prof.id}>{prof.name}</option>
-                  ))}
+                  <option value={0}>Selecione um professor</option>
+                  {professors.map(prof => {
+                    const wouldConflict = woulCauseConflict({
+                      ...allocationForm,
+                      professorId: prof.id
+                    })
+                    return (
+                      <option key={prof.id} value={prof.id} disabled={wouldConflict}>
+                        {prof.name} {wouldConflict ? '(Conflito de horário)' : ''}
+                      </option>
+                    )
+                  })}
                 </select>
               </label>
 
@@ -585,9 +756,18 @@ const Schedule = () => {
                   onChange={(e) => setAllocationForm(prev => ({ ...prev, roomId: Number(e.target.value) }))}
                   style={{ width: '100%', marginTop: 8, padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
                 >
-                  {rooms.map(room => (
-                    <option key={room.id} value={room.id}>{getRoomName(room)}</option>
-                  ))}
+                  <option value={0}>Selecione uma sala</option>
+                  {rooms.map(room => {
+                    const wouldConflict = woulCauseConflict({
+                      ...allocationForm,
+                      roomId: room.id
+                    })
+                    return (
+                      <option key={room.id} value={room.id} disabled={wouldConflict}>
+                        {getRoomName(room)} {wouldConflict ? '(Conflito de horário)' : ''}
+                      </option>
+                    )
+                  })}
                 </select>
               </label>
 
@@ -595,7 +775,18 @@ const Schedule = () => {
                 <button type="button" onClick={closeModal} style={{ padding: '10px 14px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
                   Cancelar
                 </button>
-                <button type="submit" style={{ padding: '10px 14px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                <button 
+                  type="submit" 
+                  disabled={woulCauseConflict(allocationForm) || !allocationForm.classId || !allocationForm.subjectId || !allocationForm.professorId || !allocationForm.roomId || isTimeOutOfCourseHours(normalizeTime(selectedSlot.timeSlot.split('-')[0]))}
+                  style={{ 
+                    padding: '10px 14px', 
+                    backgroundColor: woulCauseConflict(allocationForm) || !allocationForm.classId || !allocationForm.subjectId || !allocationForm.professorId || !allocationForm.roomId || isTimeOutOfCourseHours(normalizeTime(selectedSlot.timeSlot.split('-')[0])) ? '#ccc' : '#007bff', 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: 4, 
+                    cursor: woulCauseConflict(allocationForm) || !allocationForm.classId || !allocationForm.subjectId || !allocationForm.professorId || !allocationForm.roomId || isTimeOutOfCourseHours(normalizeTime(selectedSlot.timeSlot.split('-')[0])) ? 'not-allowed' : 'pointer' 
+                  }}
+                >
                   Alocar
                 </button>
               </div>

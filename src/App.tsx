@@ -29,24 +29,24 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/new" element={<CourseForm />} />
-        <Route path="/courses/:id" element={<CourseForm />} />
         <Route path="/courses/:id/edit" element={<CourseForm />} />
+        <Route path="/courses/:id" element={<CourseForm />} />
         <Route path="/classes" element={<Classes />} />
         <Route path="/classes/new" element={<ClassForm />} />
-        <Route path="/classes/:id" element={<ClassForm />} />
         <Route path="/classes/:id/edit" element={<ClassForm />} />
+        <Route path="/classes/:id" element={<ClassForm />} />
         <Route path="/subjects" element={<Subjects />} />
         <Route path="/subjects/new" element={<SubjectForm />} />
-        <Route path="/subjects/:id" element={<SubjectForm />} />
         <Route path="/subjects/:id/edit" element={<SubjectForm />} />
+        <Route path="/subjects/:id" element={<SubjectForm />} />
         <Route path="/professors" element={<Professors />} />
         <Route path="/professors/new" element={<ProfessorForm />} />
-        <Route path="/professors/:username" element={<ProfessorForm />} />
         <Route path="/professors/:username/edit" element={<ProfessorForm />} />
+        <Route path="/professors/:username" element={<ProfessorForm />} />
         <Route path="/rooms" element={<Rooms />} />
         <Route path="/rooms/new" element={<RoomForm />} />
-        <Route path="/rooms/:id" element={<RoomForm />} />
         <Route path="/rooms/:id/edit" element={<RoomForm />} />
+        <Route path="/rooms/:id" element={<RoomForm />} />
         <Route path="/schedule" element={<Schedule />} />
         <Route path="/unallocated-subjects" element={<UnallocatedSubjects />} />
       </Route>

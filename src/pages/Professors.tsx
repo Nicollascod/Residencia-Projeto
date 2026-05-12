@@ -13,6 +13,7 @@ interface User {
 const Professors = () => {
   const [professors, setProfessors] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
   const auth = useAuth()
   const navigate = useNavigate()
 
@@ -26,8 +27,21 @@ const Professors = () => {
         console.error('Error fetching professors:', error)
       }
     }
-    fetchProfessors()
-  }, [])
+    
+    // Atualizar lista de professores quando usuários mudam
+    const profs = auth.users.filter((user) => user.roles.includes('professor')).map((user) => ({
+      username: user.username,
+      name: user.name || user.username,  // Usar o campo name se existir, senão username
+      email: user.email || '',
+      roles: user.roles
+    }))
+    setProfessors(profs)
+    
+    // Se nenhum professor do contexto, tentar buscar da API
+    if (profs.length === 0) {
+      fetchProfessors()
+    }
+  }, [auth.users, refreshTrigger])
 
   const filteredProfessors = professors.filter(prof =>
     prof.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -66,11 +80,11 @@ const Professors = () => {
             <p><strong>Username:</strong> {prof.username}</p>
             <p><strong>Email:</strong> {prof.email}</p>
             <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-              <Link to={`/professors/${prof.username}`} style={{ padding: '6px 12px', backgroundColor: '#28a745', color: 'white', textDecoration: 'none', borderRadius: 4 }}>
+              <Link to={`/professors/${prof.username}`} state={{ refreshProfessors: () => setRefreshTrigger(prev => prev + 1) }} style={{ padding: '6px 12px', backgroundColor: '#28a745', color: 'white', textDecoration: 'none', borderRadius: 4 }}>
                 Ver Detalhes
               </Link>
               {auth.user?.roles.includes('coordenador-geral') && (
-                <Link to={`/professors/${prof.username}/edit`} style={{ padding: '6px 12px', backgroundColor: '#ffc107', color: 'black', textDecoration: 'none', borderRadius: 4 }}>
+                <Link to={`/professors/${prof.username}/edit`} state={{ refreshProfessors: () => setRefreshTrigger(prev => prev + 1) }} style={{ padding: '6px 12px', backgroundColor: '#ffc107', color: 'black', textDecoration: 'none', borderRadius: 4 }}>
                   Editar
                 </Link>
               )}

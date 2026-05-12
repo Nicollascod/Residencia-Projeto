@@ -1,5 +1,6 @@
 import { useState, useEffect, Fragment } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/useAuth'
 import mockApi from '../services/mockApi'
 
 interface User {
@@ -25,35 +26,61 @@ const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado',
 const ProfessorForm = () => {
   const { username } = useParams<{ username: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const auth = useAuth()
   const [professor, setProfessor] = useState<Professor>({
     user: { username: '', name: '', email: '', roles: ['professor'] },
     availability: []
   })
-  const isEditing = !!username
+  const [loading, setLoading] = useState(true)
+
+  const isEditing = location.pathname.endsWith('/edit')
+  const isViewing = !!username && !isEditing
 
   useEffect(() => {
-    if (isEditing) {
-      const fetchProfessor = async () => {
-        try {
-          const response = await mockApi.get<Professor>(`/professors/${username}`)
-          const fetched = response.data as any
-          const normalizedProfessor: Professor = {
-            user: fetched.user ?? {
-              username: fetched.username ?? '',
-              name: fetched.name ?? '',
-              email: fetched.email ?? '',
-              roles: fetched.roles ?? ['professor']
-            },
-            availability: Array.isArray(fetched.availability) ? fetched.availability : []
+    if (username) {
+      // Buscar dados do professor do contexto de usuários
+      const user = auth.users.find(u => u.username === username)
+      if (user) {
+        setProfessor({
+          user: {
+            username: user.username,
+            name: user.name || user.username,
+            email: user.email || '',
+            roles: user.roles
+          },
+          availability: [] // Por enquanto sem disponibilidade
+        })
+        setLoading(false)
+      } else {
+        // Fallback para API se não encontrar no contexto
+        const fetchProfessor = async () => {
+          try {
+            const response = await mockApi.get<Professor>(`/professors/${username}`)
+            const fetched = response.data as any
+            const normalizedProfessor: Professor = {
+              user: fetched.user ?? {
+                username: fetched.username ?? '',
+                name: fetched.name ?? '',
+                email: fetched.email ?? '',
+                roles: fetched.roles ?? ['professor']
+              },
+              availability: Array.isArray(fetched.availability) ? fetched.availability : []
+            }
+            setProfessor(normalizedProfessor)
+            setLoading(false)
+          } catch (error) {
+            console.error('Error fetching professor:', error)
+            setLoading(false)
           }
-          setProfessor(normalizedProfessor)
-        } catch (error) {
-          console.error('Error fetching professor:', error)
         }
+        fetchProfessor()
       }
-      fetchProfessor()
+    } else {
+      // Novo professor
+      setLoading(false)
     }
-  }, [username, isEditing])
+  }, [username, auth.users])
 
   const handleUserChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfessor({
@@ -77,11 +104,29 @@ const ProfessorForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isViewing) return // Não permitir submit na visualização
+    
     try {
       if (isEditing) {
+        // Atualizar usuário no contexto de autenticação
+        await auth.updateUser(username!, {
+          name: professor.user.name,
+          email: professor.user.email
+        })
+        
         await mockApi.put(`/professors/${username}`, professor)
+        // Atualizar lista de professores na página anterior
+        const refreshProfessors = (location.state as any)?.refreshProfessors
+        if (refreshProfessors) {
+          refreshProfessors()
+        }
       } else {
         await mockApi.post('/professors', professor)
+        // Atualizar lista de professores na página anterior
+        const refreshProfessors = (location.state as any)?.refreshProfessors
+        if (refreshProfessors) {
+          refreshProfessors()
+        }
       }
       navigate('/professors')
     } catch (error) {
@@ -98,8 +143,13 @@ const ProfessorForm = () => {
       <button onClick={() => navigate('/professors')} style={{ marginBottom: 16, padding: '8px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
         ← Voltar
       </button>
-      <h1>{isEditing ? 'Editar Professor' : 'Novo Professor'}</h1>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      
+      {loading ? (
+        <div>Carregando...</div>
+      ) : (
+        <>
+          <h1>{isViewing ? 'Detalhes do Professor' : isEditing ? 'Editar Professor' : 'Novo Professor'}</h1>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
         {/* Campos do Usuário */}
         <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: 16 }}>
@@ -114,7 +164,7 @@ const ProfessorForm = () => {
                 value={professor.user.username}
                 onChange={handleUserChange}
                 required
-                disabled={isEditing}
+                readOnly={isViewing}
                 style={{ width: '100%', padding: 8, marginTop: 4 }}
               />
             </div>
@@ -127,6 +177,7 @@ const ProfessorForm = () => {
                 value={professor.user.name}
                 onChange={handleUserChange}
                 required
+                readOnly={isViewing}
                 style={{ width: '100%', padding: 8, marginTop: 4 }}
               />
             </div>
@@ -139,6 +190,7 @@ const ProfessorForm = () => {
                 value={professor.user.email}
                 onChange={handleUserChange}
                 required
+                readOnly={isViewing}
                 style={{ width: '100%', padding: 8, marginTop: 4 }}
               />
             </div>
@@ -162,12 +214,16 @@ const ProfessorForm = () => {
                     type="time"
                     value={avail.startTime}
                     onChange={(e) => handleAvailabilityChange(day, 'startTime', e.target.value)}
+                    disabled={isViewing}
+                    readOnly={isViewing}
                     style={{ padding: 4 }}
                   />
                   <input
                     type="time"
                     value={avail.endTime}
                     onChange={(e) => handleAvailabilityChange(day, 'endTime', e.target.value)}
+                    disabled={isViewing}
+                    readOnly={isViewing}
                     style={{ padding: 4 }}
                   />
                 </Fragment>
@@ -177,14 +233,33 @@ const ProfessorForm = () => {
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button type="submit" style={{ padding: '10px 14px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: 4 }}>
-            Salvar
-          </button>
-          <button type="button" onClick={() => navigate('/professors')} style={{ padding: '10px 14px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4 }}>
-            Cancelar
-          </button>
+          {isViewing ? (
+            <>
+              <button 
+                type="button" 
+                onClick={() => navigate(`/professors/${username}/edit`)} 
+                style={{ padding: '10px 14px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: 4 }}
+              >
+                Editar
+              </button>
+              <button type="button" onClick={() => navigate('/professors')} style={{ padding: '10px 14px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4 }}>
+                Voltar
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="submit" style={{ padding: '10px 14px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: 4 }}>
+                Salvar
+              </button>
+              <button type="button" onClick={() => navigate('/professors')} style={{ padding: '10px 14px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 4 }}>
+                Cancelar
+              </button>
+            </>
+          )}
         </div>
       </form>
+        </>
+      )}
     </main>
   )
 }

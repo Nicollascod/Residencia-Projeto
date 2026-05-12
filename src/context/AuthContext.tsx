@@ -12,6 +12,8 @@ const STORAGE_USERS_KEY = 'auth_users'
 const defaultUsers: StoredUser[] = [
   {
     username: 'coordenador-geral',
+    name: 'Coordenador Geral',
+    email: 'geral@exemplo.com',
     password: 'geral123',
     roles: ['coordenador-geral'],
     active: true,
@@ -19,6 +21,8 @@ const defaultUsers: StoredUser[] = [
   },
   {
     username: 'coordenador',
+    name: 'Coordenador de Curso',
+    email: 'coord@exemplo.com',
     password: 'coord123',
     roles: ['coordenador'],
     active: true,
@@ -26,6 +30,8 @@ const defaultUsers: StoredUser[] = [
   },
   {
     username: 'professor',
+    name: 'Professor Silva',
+    email: 'prof@exemplo.com',
     password: 'prof123',
     roles: ['professor'],
     active: true,
@@ -33,6 +39,8 @@ const defaultUsers: StoredUser[] = [
   },
   {
     username: 'multi',
+    name: 'Professor Multi',
+    email: 'multi@exemplo.com',
     password: 'multi123',
     roles: ['coordenador', 'professor'],
     active: true,
@@ -84,12 +92,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (username: string, password: string) => {
     // Autenticação local (modo standalone)
+    // Procura por username OU email
     const matched = storedUsers.find(
-      (item) => item.username.toLowerCase() === username.toLowerCase(),
+      (item) => item.username.toLowerCase() === username.toLowerCase() || item.email?.toLowerCase() === username.toLowerCase(),
     )
 
     if (!matched || matched.password !== password) {
-      return Promise.reject(new Error('Usuário ou senha inválidos'))
+      return Promise.reject(new Error('Usuário, email ou senha inválidos'))
     }
 
     if (!matched.active) {
@@ -98,6 +107,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const loggedUser: User = {
       username: matched.username,
+      name: matched.name,
+      email: matched.email,
       roles: matched.roles,
       active: matched.active,
       courses: matched.courses,
@@ -110,7 +121,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null)
   }
 
-  const createUser = async (username: string, password: string, roles: Role[], courses: string[] = []) => {
+  const createUser = async (username: string, password: string, roles: Role[], courses: string[] = [], email: string = '', name: string = '') => {
     const existingUser = storedUsers.find(
       (item) => item.username.toLowerCase() === username.toLowerCase(),
     )
@@ -119,12 +130,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return Promise.reject(new Error('Já existe um usuário com esse nome'))
     }
 
-    if (!username.trim() || !password.trim() || roles.length === 0) {
-      return Promise.reject(new Error('Preencha todos os campos e selecione ao menos um papel'))
+    if (!username.trim() || !password.trim() || !email.trim() || roles.length === 0) {
+      return Promise.reject(new Error('Preencha todos os campos obrigatórios e selecione ao menos um papel'))
     }
 
     const newUser: StoredUser = {
       username: username.trim(),
+      name: name.trim() || username.trim(),
+      email: email.trim(),
       password: password.trim(),
       roles,
       active: true,
@@ -134,7 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setStoredUsers((prev) => [...prev, newUser])
   }
 
-  const updateUser = async (username: string, updates: Partial<Pick<User, 'roles' | 'active' | 'courses'>>) => {
+  const updateUser = async (username: string, updates: Partial<Pick<User, 'name' | 'email' | 'roles' | 'active' | 'courses'>>) => {
     const userIndex = storedUsers.findIndex(
       (item) => item.username.toLowerCase() === username.toLowerCase(),
     )
@@ -189,6 +202,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     user,
     users: storedUsers.map((item) => ({
       username: item.username,
+      email: item.email,
       roles: item.roles,
       active: item.active,
       courses: item.courses,

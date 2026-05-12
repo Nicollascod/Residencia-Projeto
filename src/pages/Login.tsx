@@ -30,7 +30,7 @@ const Login = () => {
       <p>Use uma conta existente para acessar as rotas protegidas.</p>
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12, marginTop: 24 }}>
         <label>
-          Usuário
+          Email ou Usuário
           <input
             type="text"
             value={username}

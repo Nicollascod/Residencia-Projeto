@@ -47,9 +47,10 @@ interface ScheduleGridProps {
   professors: Professor[]
   editMode: boolean
   dragOverCellKey: string | null
+  conflictingCells: Map<string, { type: 'professor' | 'sala' | 'turma'; name: string }[]>
   onEmptyCellClick: (itemId: number, itemName: string, day: string, timeSlot: string) => void
   onCellDrop: (event: React.DragEvent<HTMLTableCellElement>, itemId: number, day: string, timeSlot: string) => void
-  onCellDragOver: (event: React.DragEvent<HTMLTableCellElement>, cellKey: string) => void
+  onCellDragOver: (event: React.DragEvent<HTMLTableCellElement>, cellKey: string, itemId: number, day: string, slot: string) => void
   onCellDragLeave: (cellKey: string) => void
   onScheduledClassDragStart: (event: React.DragEvent<HTMLDivElement>, scheduledClassId: string) => void
 }
@@ -80,6 +81,7 @@ const ScheduleGrid = ({
   professors,
   editMode,
   dragOverCellKey,
+  conflictingCells,
   onEmptyCellClick,
   onCellDrop,
   onCellDragOver,
@@ -194,38 +196,52 @@ const ScheduleGrid = ({
                   const info = scheduledClass ? getScheduledClassInfo(scheduledClass) : null
                   const isEmpty = !scheduledClass
                   const isActiveDrag = dragOverCellKey === cellKey
+                  const hasConflict = conflictingCells.has(cellKey)
+                  const conflictDetails = conflictingCells.get(cellKey) || []
+                  const conflictTooltip = hasConflict 
+                    ? conflictDetails.map(c => `${c.type === 'professor' ? '👤' : c.type === 'sala' ? '🏛️' : '👥'} ${c.name} já tem aula neste horário`).join(' | ')
+                    : null
 
                   return (
                     <td
                       key={cellKey}
                       onClick={() => {
-                        if (editMode && isEmpty) {
+                        if (editMode && isEmpty && !hasConflict) {
                           onEmptyCellClick(getItemId(item), getItemName(item), daysOfWeek[dayIndex], slot)
                         }
                       }}
                       onDragOver={(event) => {
-                        if (!editMode) return
+                        if (!editMode || hasConflict) return
                         event.preventDefault()
-                        onCellDragOver(event, cellKey)
+                        onCellDragOver(event, cellKey, getItemId(item), daysOfWeek[dayIndex], slot)
                       }}
                       onDragLeave={() => {
                         if (!editMode) return
                         onCellDragLeave(cellKey)
                       }}
                       onDrop={(event) => {
-                        if (!editMode) return
+                        if (!editMode || hasConflict) return
                         onCellDrop(event, getItemId(item), daysOfWeek[dayIndex], slot)
                       }}
                       style={{
-                        border: '1px solid #ddd',
+                        border: hasConflict ? '2px solid #dc3545' : '1px solid #ddd',
                         padding: '4px',
-                        backgroundColor: scheduledClass ? '#e3f2fd' : isActiveDrag ? '#d1ecf1' : '#fff',
-                        cursor: editMode ? (isEmpty ? 'pointer' : 'grab') : scheduledClass ? 'pointer' : 'default',
+                        backgroundColor: hasConflict 
+                          ? '#ffe5e5' 
+                          : scheduledClass 
+                            ? '#e3f2fd' 
+                            : isActiveDrag 
+                              ? '#d1ecf1' 
+                              : '#fff',
+                        cursor: editMode 
+                          ? (hasConflict ? 'not-allowed' : isEmpty ? 'pointer' : 'grab') 
+                          : scheduledClass ? 'pointer' : 'default',
                         minHeight: '60px',
                         verticalAlign: 'top',
-                        transition: 'background-color 0.15s ease'
+                        transition: 'background-color 0.15s ease',
+                        boxShadow: hasConflict ? '0 0 4px rgba(220, 53, 69, 0.5) inset' : 'none'
                       }}
-                      title={info ? `${info.subjectName} - ${info.professorName} - ${info.roomName}` : ''}
+                      title={conflictTooltip || (info ? `${info.subjectName} - ${info.professorName} - ${info.roomName}` : '')}
                     >
                       {scheduledClass && (
                         <div
