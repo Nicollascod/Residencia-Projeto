@@ -45,7 +45,7 @@ const Subjects = () => {
       </button>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1>Disciplinas</h1>
-        {auth.user?.roles.includes('coordenador') && (
+        {(auth.user?.roles.some(role => role === 'coordenador' || role === 'coordenador-geral')) && (
           <Link to="/subjects/new" style={{ padding: '10px 14px', backgroundColor: '#007bff', color: 'white', textDecoration: 'none', borderRadius: 4 }}>
             Nova Disciplina
           </Link>
@@ -77,7 +77,7 @@ const Subjects = () => {
                 <Link to={`/subjects/${subject.id}`} style={{ padding: '6px 12px', backgroundColor: '#28a745', color: 'white', textDecoration: 'none', borderRadius: 4 }}>
                   Ver Detalhes
                 </Link>
-                {auth.user?.roles.includes('coordenador') && (
+                {(auth.user?.roles.some(role => role === 'coordenador' || role === 'coordenador-geral')) && (
                   <Link to={`/subjects/${subject.id}/edit`} style={{ padding: '6px 12px', backgroundColor: '#ffc107', color: 'black', textDecoration: 'none', borderRadius: 4 }}>
                     Editar
                   </Link>

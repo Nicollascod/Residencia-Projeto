@@ -137,7 +137,7 @@ const Schedule = () => {
       }
       if (isSameId(sc.sala, candidate.sala)) {
         const room = rooms.find(r => isSameId(r.id, sc.sala))
-        conflicts.push({ type: 'sala', name: getRoomName(room) })
+        conflicts.push({ type: 'sala', name: room ? getRoomName(room) : 'Sala desconhecida' })
       }
       if (isSameId(sc.turma, candidate.turma)) {
         const cls = classes.find(c => isSameId(c.id, sc.turma))
@@ -207,7 +207,7 @@ const Schedule = () => {
   }
 
   // Verificar se uma combinação específica causaria conflito (para desabilitar selects)
-  const woulCauseConflict = (updatedForm: {
+  const wouldCauseConflict = (updatedForm: {
     classId: number
     subjectId: number | string
     professorId: number | string
@@ -694,7 +694,7 @@ const Schedule = () => {
                   ⚠️ {allocationError}
                 </div>
               )}
-              {woulCauseConflict(allocationForm) && !allocationError && (
+              {wouldCauseConflict(allocationForm) && !allocationError && (
                 <div style={{ backgroundColor: '#fff3cd', border: '1px solid #ffecb5', color: '#856404', padding: 12, borderRadius: 8 }}>
                   ⚠️ Combinação atual causa conflito. Ajuste os campos abaixo.
                 </div>
@@ -736,7 +736,7 @@ const Schedule = () => {
                 >
                   <option value={0}>Selecione um professor</option>
                   {professors.map(prof => {
-                    const wouldConflict = woulCauseConflict({
+                    const wouldConflict = wouldCauseConflict({
                       ...allocationForm,
                       professorId: prof.id
                     })
@@ -758,7 +758,7 @@ const Schedule = () => {
                 >
                   <option value={0}>Selecione uma sala</option>
                   {rooms.map(room => {
-                    const wouldConflict = woulCauseConflict({
+                    const wouldConflict = wouldCauseConflict({
                       ...allocationForm,
                       roomId: room.id
                     })
@@ -777,14 +777,14 @@ const Schedule = () => {
                 </button>
                 <button 
                   type="submit" 
-                  disabled={woulCauseConflict(allocationForm) || !allocationForm.classId || !allocationForm.subjectId || !allocationForm.professorId || !allocationForm.roomId || isTimeOutOfCourseHours(normalizeTime(selectedSlot.timeSlot.split('-')[0]))}
+                  disabled={wouldCauseConflict(allocationForm) || !allocationForm.classId || !allocationForm.subjectId || !allocationForm.professorId || !allocationForm.roomId || isTimeOutOfCourseHours(normalizeTime(selectedSlot.timeSlot.split('-')[0]))}
                   style={{ 
                     padding: '10px 14px', 
-                    backgroundColor: woulCauseConflict(allocationForm) || !allocationForm.classId || !allocationForm.subjectId || !allocationForm.professorId || !allocationForm.roomId || isTimeOutOfCourseHours(normalizeTime(selectedSlot.timeSlot.split('-')[0])) ? '#ccc' : '#007bff', 
+                    backgroundColor: wouldCauseConflict(allocationForm) || !allocationForm.classId || !allocationForm.subjectId || !allocationForm.professorId || !allocationForm.roomId || isTimeOutOfCourseHours(normalizeTime(selectedSlot.timeSlot.split('-')[0])) ? '#ccc' : '#007bff', 
                     color: 'white', 
                     border: 'none', 
                     borderRadius: 4, 
-                    cursor: woulCauseConflict(allocationForm) || !allocationForm.classId || !allocationForm.subjectId || !allocationForm.professorId || !allocationForm.roomId || isTimeOutOfCourseHours(normalizeTime(selectedSlot.timeSlot.split('-')[0])) ? 'not-allowed' : 'pointer' 
+                    cursor: wouldCauseConflict(allocationForm) || !allocationForm.classId || !allocationForm.subjectId || !allocationForm.professorId || !allocationForm.roomId || isTimeOutOfCourseHours(normalizeTime(selectedSlot.timeSlot.split('-')[0])) ? 'not-allowed' : 'pointer' 
                   }}
                 >
                   Alocar

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import mockApi from '../services/mockApi'
 
@@ -34,25 +34,26 @@ const Courses = () => {
       </button>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1>Cursos</h1>
-        {auth.user?.roles.includes('coordenador') && (
-          <button 
-            onClick={() => navigate('/courses/new')}
-            style={{ 
-              padding: '10px 14px', 
-              backgroundColor: '#007bff', 
-              color: 'white', 
-              border: 'none', 
+        {(auth.user?.roles.some(role => role === 'coordenador' || role === 'coordenador-geral')) && (
+          <Link
+            to="/courses/new"
+            style={{
+              padding: '10px 14px',
+              backgroundColor: '#007bff',
+              color: 'white',
+              textDecoration: 'none',
+              border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               transition: 'background-color 0.2s ease',
               fontSize: '14px',
               fontWeight: '500'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0056b3'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#007bff'}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#0056b3')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#007bff')}
           >
             ✚ Novo Curso
-          </button>
+          </Link>
         )}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>

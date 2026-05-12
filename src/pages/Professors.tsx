@@ -80,11 +80,11 @@ const Professors = () => {
             <p><strong>Username:</strong> {prof.username}</p>
             <p><strong>Email:</strong> {prof.email}</p>
             <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-              <Link to={`/professors/${prof.username}`} state={{ refreshProfessors: () => setRefreshTrigger(prev => prev + 1) }} style={{ padding: '6px 12px', backgroundColor: '#28a745', color: 'white', textDecoration: 'none', borderRadius: 4 }}>
+              <Link to={`/professors/${prof.username}`} style={{ padding: '6px 12px', backgroundColor: '#28a745', color: 'white', textDecoration: 'none', borderRadius: 4 }}>
                 Ver Detalhes
               </Link>
               {auth.user?.roles.includes('coordenador-geral') && (
-                <Link to={`/professors/${prof.username}/edit`} state={{ refreshProfessors: () => setRefreshTrigger(prev => prev + 1) }} style={{ padding: '6px 12px', backgroundColor: '#ffc107', color: 'black', textDecoration: 'none', borderRadius: 4 }}>
+                <Link to={`/professors/${prof.username}/edit`} style={{ padding: '6px 12px', backgroundColor: '#ffc107', color: 'black', textDecoration: 'none', borderRadius: 4 }}>
                   Editar
                 </Link>
               )}
